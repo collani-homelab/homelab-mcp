@@ -56,6 +56,11 @@ func (s *Server) AddProvider(p provider.Provider) {
 	}
 }
 
+// Providers returns the list of registered providers (useful for testing).
+func (s *Server) Providers() []provider.Provider {
+	return s.providers
+}
+
 func (s *Server) Run(ctx context.Context) error {
 	return s.mcpServer.Run(ctx, &mcp.StdioTransport{})
 }

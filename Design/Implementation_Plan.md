@@ -65,6 +65,6 @@ type Provider interface {
 1. **Setup**: Initialize Go module and `mise.toml`. [x]
 2. **Skeleton**: Implement basic MCP server that responds with a "Hello World" resource. [x]
 3. **Testing Setup**: Verify the skeleton works using the MCP Inspector and write the first unit test. [x]
-4. **Unraid**: Implement the Unraid Provider fetching the Docker list. []
+4. **Unraid**: Implement the Unraid Provider fetching the Docker list. [x]
 5. **UniFi**: Implement the UniFi Provider fetching the Client list. []
 6. **Refinement**: Add logging and error handling using Go's `slog` package. []
