@@ -1,0 +1,29 @@
+# Ignore environment variable files
+.env
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+homelab-mcp
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+*.prof
+
+# Dependency directories (if you ever use go mod vendor)
+vendor/
+
+# Go workspace files (usually local-only)
+go.work
+go.work.sum
+
+# Common OS and Editor files
+.DS_Store
+.idea/
+.vscode/

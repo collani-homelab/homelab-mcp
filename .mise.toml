@@ -1,0 +1,25 @@
+[tools]
+go = "1.22"
+node = "lts" # Required for the MCP Inspector (npx)
+
+[env]
+# Automatically load the .env file if it exists, providing secrets to your tasks
+_.file = ".env"
+
+[tasks.build]
+description = "Build the MCP server binary"
+run = "go build -o homelab-mcp ."
+
+[tasks.test]
+description = "Run all Go unit and integration tests"
+run = "go test -v ./..."
+
+[tasks.run]
+description = "Build and run the MCP server manually"
+depends = ["build"]
+run = "./homelab-mcp"
+
+[tasks.inspector]
+description = "Launch the MCP Inspector with the compiled binary"
+depends = ["build"]
+run = "npx @modelcontextprotocol/inspector@latest ./homelab-mcp"
