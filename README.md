@@ -9,7 +9,30 @@ A Model Context Protocol (MCP) server written in Go to provide AI assistants wit
 - [x] **Step 3: Testing Setup** - Unit tests implemented; MCP Inspector verification working.
 - [x] **Step 4: Unraid Integration** - GraphQL client for Docker containers.
 - [x] **Step 5: UniFi Integration** - Network client for active clients and devices.
-- [ ] **Step 6: Refinement** - Enhanced logging and error handling.
+- [x] **Step 6: Refinement** - Enhanced logging and error handling.
+- [x] **Step 7: Expansion** - Added System Stats and Array Health to Unraid.
+- [x] **Step 8: Insights** - Added Network Health and PoE status to UniFi.
+- [x] **Step 9: Guidance** - Implemented MCP Prompts natively (`homelab_status_report` and `troubleshoot_client`).
+- [x] **Step 10: Optimization** - Implemented AI-friendly JSON pruning for UniFi to reduce token usage.
+
+## Capabilities
+
+### Resources
+- `unraid://{name}/containers` - Docker containers list and status.
+- `unraid://{name}/system/stats` - Server uptime and memory stats.
+- `unraid://{name}/array/status` - Parity disk status and array health.
+- `unifi://clients` - Active network clients.
+- `unifi://devices` - UniFi network infrastructure devices.
+- `unifi://network/health` - High-level ISP and network health.
+- `unifi://switches/poe` - PoE switch power and port status.
+
+### Resource Templates
+- `unraid://{name}/containers/{name}/logs` - *Upcoming*: Docker container logs (currently routing correctly but waiting on Unraid GraphQL support).
+
+### Prompts
+- `homelab_status_report`: A pre-defined prompt that instructs the AI to fetch and summarize the Unraid system stats and UniFi network health.
+- `troubleshoot_client`: Requires a `mac` argument. Instructs the AI to query the UniFi clients list to help diagnose network issues for a specific device.
+
 
 ## Architecture
 

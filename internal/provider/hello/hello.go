@@ -28,3 +28,15 @@ func (h *HelloProvider) GetResourceContent(uri string) (string, error) {
 	}
 	return "", fmt.Errorf("resource not found: %s", uri)
 }
+
+func (h *HelloProvider) GetResourceTemplates() ([]mcp.ResourceTemplate, error) {
+	return []mcp.ResourceTemplate{}, nil
+}
+
+func (h *HelloProvider) GetPrompts() ([]mcp.Prompt, error) {
+	return []mcp.Prompt{}, nil
+}
+
+func (h *HelloProvider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
+	return nil, fmt.Errorf("prompt not found: %s", name)
+}

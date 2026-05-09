@@ -66,6 +66,31 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 			Name:     fmt.Sprintf("Unraid Docker Containers (%s)", p.name),
 			MIMEType: "application/json",
 		},
+		{
+			URI:      fmt.Sprintf("unraid://%s/system/stats", p.name),
+			Name:     fmt.Sprintf("Unraid System Stats (%s)", p.name),
+			MIMEType: "application/json",
+		},
+		{
+			URI:      fmt.Sprintf("unraid://%s/array/status", p.name),
+			Name:     fmt.Sprintf("Unraid Array Status (%s)", p.name),
+			MIMEType: "application/json",
+		},
+		{
+			URI:      fmt.Sprintf("unraid://%s/vms", p.name),
+			Name:     fmt.Sprintf("Unraid Virtual Machines (%s)", p.name),
+			MIMEType: "application/json",
+		},
+		{
+			URI:      fmt.Sprintf("unraid://%s/system/ups", p.name),
+			Name:     fmt.Sprintf("Unraid UPS Status (%s)", p.name),
+			MIMEType: "application/json",
+		},
+		{
+			URI:      fmt.Sprintf("unraid://%s/notifications", p.name),
+			Name:     fmt.Sprintf("Unraid System Notifications (%s)", p.name),
+			MIMEType: "application/json",
+		},
 	}, nil
 }
 
@@ -82,12 +107,17 @@ type graphQLResponse struct {
 }
 
 func (p *Provider) GetResourceContent(uri string) (string, error) {
-	expectedURI := fmt.Sprintf("unraid://%s/containers", p.name)
-	if uri != expectedURI {
-		return "", fmt.Errorf("unsupported resource URI: %s", uri)
-	}
+	containersURI := fmt.Sprintf("unraid://%s/containers", p.name)
+	statsURI := fmt.Sprintf("unraid://%s/system/stats", p.name)
+	arrayURI := fmt.Sprintf("unraid://%s/array/status", p.name)
+	vmsURI := fmt.Sprintf("unraid://%s/vms", p.name)
+	upsURI := fmt.Sprintf("unraid://%s/system/ups", p.name)
+	notificationsURI := fmt.Sprintf("unraid://%s/notifications", p.name)
 
-	query := `query {
+	var query string
+	switch uri {
+	case containersURI:
+		query = `query {
   docker {
     containers {
       id
@@ -99,6 +129,88 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
     }
   }
 }`
+	case statsURI:
+		query = `query {
+  info {
+    time
+  }
+  metrics {
+    memory {
+      total
+      free
+      used
+    }
+  }
+}`
+	case arrayURI:
+		query = `query {
+  array {
+    state
+    parityCheckStatus {
+      status
+      progress
+      speed
+      duration
+    }
+    parities {
+      name
+      size
+      status
+    }
+    disks {
+      name
+      size
+      status
+    }
+  }
+}`
+	case vmsURI:
+		query = `query {
+  vms {
+    domains {
+      name
+      state
+    }
+  }
+}`
+	case upsURI:
+		query = `query {
+  upsDevices {
+    name
+    status
+    battery {
+      chargeLevel
+      estimatedRuntime
+      health
+    }
+    power {
+      inputVoltage
+      loadPercentage
+    }
+  }
+}`
+	case notificationsURI:
+		query = `query {
+  notifications {
+    list(filter: { offset: 0, limit: 10, type: UNREAD }) {
+      title
+      subject
+      description
+      importance
+      formattedTimestamp
+    }
+  }
+}`
+	default:
+		// Check for container logs template match
+		var containerName string
+		if _, err := fmt.Sscanf(uri, fmt.Sprintf("unraid://%s/containers/%%s/logs", p.name), &containerName); err == nil {
+			// A real implementation would fetch docker logs here using GraphQL or Docker API.
+			// Currently Unraid GraphQL for docker logs is restricted or complex, so we return a placeholder.
+			return fmt.Sprintf("Logs for container %s are not yet implemented natively.", containerName), nil
+		}
+		return "", fmt.Errorf("unsupported resource URI: %s", uri)
+	}
 
 	reqBody, err := json.Marshal(graphQLRequest{Query: query})
 	if err != nil {
@@ -149,3 +261,22 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 
 	return string(gqlResp.Data), nil
 }
+
+func (p *Provider) GetResourceTemplates() ([]mcp.ResourceTemplate, error) {
+	return []mcp.ResourceTemplate{
+		{
+			URITemplate: fmt.Sprintf("unraid://%s/containers/{name}/logs", p.name),
+			Name:        "Unraid Container Logs",
+			MIMEType:    "text/plain",
+		},
+	}, nil
+}
+
+func (p *Provider) GetPrompts() ([]mcp.Prompt, error) {
+	return []mcp.Prompt{}, nil
+}
+
+func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
+	return nil, fmt.Errorf("prompt not found: %s", name)
+}
+
