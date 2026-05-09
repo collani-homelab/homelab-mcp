@@ -93,7 +93,7 @@ type Provider interface {
 - **Token Pruning**: Implement a "Summary" view for JSON responses that removes internal noise (UUIDs, redundant flags) before sending to the AI.
 
 ## 10. Iteration Roadmap (Phase 2)
-7. **Expansion**: Add System Stats and Array Health to Unraid. []
-8. **Insights**: Add Network Health and PoE status to UniFi. []
-9. **Guidance**: Implement the first set of MCP Prompts. []
-10. **Optimization**: Implement AI-friendly JSON pruning. []
+7. **Expansion**: Add System Stats and Array Health to Unraid. [x]
+8. **Insights**: Add Network Health and PoE status to UniFi. [x]
+9. **Guidance**: Implement the first set of MCP Prompts. [x]
+10. **Optimization**: Implement AI-friendly JSON pruning. [x]

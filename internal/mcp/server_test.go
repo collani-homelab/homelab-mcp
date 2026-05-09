@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"homelab-mcp/internal/provider"
+	"homelab-mcp/internal/provider/hello"
 	"os"
 	"strings"
 	"testing"
@@ -87,7 +87,7 @@ func TestServer_StdioIntegration(t *testing.T) {
 
 	// 2. Setup and run the server in a background goroutine.
 	srv := NewServer("homelab-mcp-test", "0.1.0")
-	srv.AddProvider(&provider.HelloProvider{})
+	srv.AddProvider(&hello.HelloProvider{})
 
 	serverErrChan := make(chan error, 1)
 	ctx, cancel := context.WithCancel(context.Background())

@@ -58,6 +58,43 @@ func (s *Server) AddProvider(p provider.Provider) {
 			}, nil
 		})
 	}
+
+	templates, err := p.GetResourceTemplates()
+	if err == nil {
+		for _, tmpl := range templates {
+			t := tmpl // Copy for closure
+			slog.Debug("Adding resource template", "provider", p.Name(), "uriTemplate", t.URITemplate)
+			s.mcpServer.AddResourceTemplate(&t, func(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+				slog.Info("Reading resource from template", "uri", req.Params.URI)
+				content, err := p.GetResourceContent(req.Params.URI)
+				if err != nil {
+					slog.Error("Failed to read resource template", "uri", req.Params.URI, "error", err)
+					return nil, err
+				}
+				return &mcp.ReadResourceResult{
+					Contents: []*mcp.ResourceContents{
+						{
+							URI:      req.Params.URI,
+							MIMEType: t.MIMEType,
+							Text:     content,
+						},
+					},
+				}, nil
+			})
+		}
+	}
+
+	prompts, err := p.GetPrompts()
+	if err == nil {
+		for _, prompt := range prompts {
+			pr := prompt // Copy for closure
+			slog.Debug("Adding prompt", "provider", p.Name(), "name", pr.Name)
+			s.mcpServer.AddPrompt(&pr, func(ctx context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+				slog.Info("Executing prompt", "name", req.Params.Name)
+				return p.GetPrompt(req.Params.Name, req.Params.Arguments)
+			})
+		}
+	}
 }
 
 // Providers returns the list of registered providers (useful for testing).
@@ -66,5 +103,24 @@ func (s *Server) Providers() []provider.Provider {
 }
 
 func (s *Server) Run(ctx context.Context) error {
+	// Register global prompts
+	prompt := mcp.Prompt{
+		Name:        "homelab_status_report",
+		Description: "A pre-defined prompt that fetches high-level health from all homelab providers.",
+	}
+	s.mcpServer.AddPrompt(&prompt, func(ctx context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+		return &mcp.GetPromptResult{
+			Messages: []*mcp.PromptMessage{
+				{
+					Role: "user",
+					Content: &mcp.TextContent{
+						Text: "Please read the system stats from Unraid and the network health from UniFi, and provide a high-level summary of the homelab's status.",
+					},
+				},
+			},
+		}, nil
+	})
+
 	return s.mcpServer.Run(ctx, &mcp.StdioTransport{})
 }
+

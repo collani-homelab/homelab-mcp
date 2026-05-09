@@ -40,8 +40,8 @@ func TestProvider_GetResources(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if len(resources) != 2 {
-		t.Fatalf("expected 2 resources, got %d", len(resources))
+	if len(resources) != 4 {
+		t.Fatalf("expected 4 resources, got %d", len(resources))
 	}
 	if resources[0].URI != "unifi://clients" {
 		t.Errorf("expected URI 'unifi://clients', got %q", resources[0].URI)
