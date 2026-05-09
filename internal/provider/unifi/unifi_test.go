@@ -40,11 +40,14 @@ func TestProvider_GetResources(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if len(resources) != 1 {
-		t.Fatalf("expected 1 resource, got %d", len(resources))
+	if len(resources) != 2 {
+		t.Fatalf("expected 2 resources, got %d", len(resources))
 	}
 	if resources[0].URI != "unifi://clients" {
 		t.Errorf("expected URI 'unifi://clients', got %q", resources[0].URI)
+	}
+	if resources[1].URI != "unifi://devices" {
+		t.Errorf("expected URI 'unifi://devices', got %q", resources[1].URI)
 	}
 }
 
@@ -99,5 +102,27 @@ func TestProvider_GetResourceContent_Fallback(t *testing.T) {
 	
 	if !strings.Contains(content, "Fallback Client") {
 		t.Errorf("expected content to contain 'Fallback Client', got %s", content)
+	}
+}
+
+func TestProvider_GetResourceContent_Devices(t *testing.T) {
+	mux := http.NewServeMux()
+	
+	mux.HandleFunc("/proxy/network/api/s/default/stat/device", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"data": [{"name": "U6-Pro", "type": "uap"}]}`))
+	})
+
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	p, _ := NewProvider(ts.URL, "mock-api-key", false)
+	content, err := p.GetResourceContent("unifi://devices")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	
+	if !strings.Contains(content, "U6-Pro") {
+		t.Errorf("expected content to contain 'U6-Pro', got %s", content)
 	}
 }

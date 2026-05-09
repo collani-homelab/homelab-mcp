@@ -8,7 +8,7 @@ A Model Context Protocol (MCP) server written in Go to provide AI assistants wit
 - [x] **Step 2: Skeleton** - Implemented basic MCP server with `stdio` transport and a "Hello World" provider.
 - [x] **Step 3: Testing Setup** - Unit tests implemented; MCP Inspector verification working.
 - [x] **Step 4: Unraid Integration** - GraphQL client for Docker containers.
-- [ ] **Step 5: UniFi Integration** - Network client for active clients.
+- [x] **Step 5: UniFi Integration** - Network client for active clients and devices.
 - [ ] **Step 6: Refinement** - Enhanced logging and error handling.
 
 ## Architecture
@@ -25,7 +25,7 @@ homelab-mcp/
 │       ├── provider.go # Interface definitions
 │       ├── hello/      # Simple test provider
 │       ├── unraid/     # Unraid GraphQL client
-│       └── unifi/      # UniFi API client (Coming Soon)
+│       └── unifi/      # UniFi API client
 └── .mise.toml          # Tooling & Environment
 ```
 

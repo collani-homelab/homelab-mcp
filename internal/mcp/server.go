@@ -31,16 +31,20 @@ func (s *Server) AddProvider(p provider.Provider) {
 
 	resources, err := p.GetResources()
 	if err != nil {
-		// As per the implementation plan, log errors to stderr.
-		slog.Error("failed to get resources from provider", "provider", p.Name(), "error", err)
+		slog.Error("Failed to get resources from provider", "provider", p.Name(), "error", err)
 		return
 	}
 
+	slog.Info("Registering resources for provider", "provider", p.Name(), "count", len(resources))
+
 	for _, res := range resources {
 		r := res // Copy for closure
+		slog.Debug("Adding resource", "provider", p.Name(), "uri", r.URI)
 		s.mcpServer.AddResource(&r, func(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+			slog.Info("Reading resource", "uri", req.Params.URI)
 			content, err := p.GetResourceContent(req.Params.URI)
 			if err != nil {
+				slog.Error("Failed to read resource", "uri", req.Params.URI, "error", err)
 				return nil, err
 			}
 			return &mcp.ReadResourceResult{

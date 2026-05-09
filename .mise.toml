@@ -8,7 +8,7 @@ _.file = ".env"
 
 [tasks.build]
 description = "Build the MCP server binary"
-run = "go build -o homelab-mcp ."
+run = "go build -o homelab-mcp ./cmd/server"
 
 [tasks.test]
 description = "Run all Go unit and integration tests"

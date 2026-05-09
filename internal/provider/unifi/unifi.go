@@ -59,21 +59,45 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 			Name:     "UniFi Active Clients",
 			MIMEType: "application/json",
 		},
+		{
+			URI:      "unifi://devices",
+			Name:     "UniFi Devices",
+			MIMEType: "application/json",
+		},
 	}, nil
 }
 
 func (p *Provider) GetResourceContent(uri string) (string, error) {
-	if uri != "unifi://clients" {
+	var apiPath string
+	switch uri {
+	case "unifi://clients":
+		apiPath = "stat/sta"
+	case "unifi://devices":
+		apiPath = "stat/device"
+	default:
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}
 
+	return p.fetchFromUniFi(apiPath)
+}
+
+func (p *Provider) fetchFromUniFi(apiPath string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Fetch from the integration endpoint
-	// Note: For UniFi OS consoles using local API, this might need to be prefixed with /proxy/network
-	// depending on firmware version. We'll try the proxy one first, then fallback.
-	endpoint := fmt.Sprintf("%s/proxy/network/api/s/default/stat/sta", p.baseURL)
+	// Try with /proxy/network/api/s/default prefix first
+	endpoint := fmt.Sprintf("%s/proxy/network/api/s/default/%s", p.baseURL, apiPath)
+	content, err := p.doRequest(ctx, endpoint)
+	if err == nil {
+		return content, nil
+	}
+
+	// Fallback to /api/s/default prefix
+	fallbackEndpoint := fmt.Sprintf("%s/api/s/default/%s", p.baseURL, apiPath)
+	return p.doRequest(ctx, fallbackEndpoint)
+}
+
+func (p *Provider) doRequest(ctx context.Context, endpoint string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
@@ -95,24 +119,6 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		// Fallback to non-proxied endpoint if the proxy one fails
-		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusUnauthorized {
-			fallbackEndpoint := fmt.Sprintf("%s/api/s/default/stat/sta", p.baseURL)
-			fallbackReq, _ := http.NewRequestWithContext(ctx, "GET", fallbackEndpoint, nil)
-			fallbackReq.Header.Set("Content-Type", "application/json")
-			fallbackReq.Header.Set("Accept", "application/json")
-			fallbackReq.Header.Set("X-API-KEY", p.apiKey)
-			
-			fallbackResp, err := p.client.Do(fallbackReq)
-			if err == nil {
-				defer fallbackResp.Body.Close()
-				if fallbackResp.StatusCode == http.StatusOK {
-					fallbackBodyBytes, _ := io.ReadAll(fallbackResp.Body)
-					return string(fallbackBodyBytes), nil
-				}
-			}
-		}
-
 		return "", fmt.Errorf("API error: status=%d body=%s", resp.StatusCode, string(bodyBytes))
 	}
 

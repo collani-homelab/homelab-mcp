@@ -66,5 +66,34 @@ type Provider interface {
 2. **Skeleton**: Implement basic MCP server that responds with a "Hello World" resource. [x]
 3. **Testing Setup**: Verify the skeleton works using the MCP Inspector and write the first unit test. [x]
 4. **Unraid**: Implement the Unraid Provider fetching the Docker list. [x]
-5. **UniFi**: Implement the UniFi Provider fetching the Client list. []
-6. **Refinement**: Add logging and error handling using Go's `slog` package. []
+5. **UniFi**: Implement the UniFi Provider fetching the Client list. [x]
+6. **Refinement**: Add logging and error handling using Go's `slog` package. [x]
+
+## 9. Phase 2: Iteration & Feature Expansion
+
+### Goals
+- Deepen the context available from both Unraid and UniFi.
+- Implement MCP **Prompts** to guide AI discovery.
+- Optimize data transmission for token efficiency.
+
+### Unraid Expansion
+- **System Stats**: Add `unraid://system/stats` for CPU, RAM, and Uptime.
+- **Array Health**: Add `unraid://array/status` for parity info and disk health.
+- **Resource Templates**: Support `unraid://containers/{name}/logs` to fetch recent logs.
+
+### UniFi Expansion
+- **Network Health**: Add `unifi://network/health` for ISP speeds and latency.
+- **PoE Status**: Add `unifi://switches/poe` to monitor power budget.
+- **WiFi Experience**: Include experience scores in the client list.
+
+### New MCP Capabilities
+- **Prompts**: 
+    - `Homelab Status Report`: A pre-defined prompt that fetches high-level health from all providers.
+    - `Troubleshoot Client`: A prompt that helps diagnose why a specific MAC address might be having issues.
+- **Token Pruning**: Implement a "Summary" view for JSON responses that removes internal noise (UUIDs, redundant flags) before sending to the AI.
+
+## 10. Iteration Roadmap (Phase 2)
+7. **Expansion**: Add System Stats and Array Health to Unraid. []
+8. **Insights**: Add Network Health and PoE status to UniFi. []
+9. **Guidance**: Implement the first set of MCP Prompts. []
+10. **Optimization**: Implement AI-friendly JSON pruning. []
