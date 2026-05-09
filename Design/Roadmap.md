@@ -31,7 +31,7 @@ This document tracks the iterative goals and completed phases of the project. Fo
 - Establish a KISS continuous deployment pipeline.
 
 ### Proposed Roadmap (Draft)
-- [ ] **Transport Layer**: Migrate (or add support for) SSE over HTTP to allow remote consumption of the MCP server.
+- [x] **Transport Layer**: Migrate (or add support for) SSE over HTTP to allow remote consumption of the MCP server.
 - [ ] **Media Providers**: Add `Tautulli` (for Plex streams), and `Starr` apps (Radarr, Sonarr) for queue and missing media contexts.
 - [ ] **Dockerization**: Create a multi-stage `Dockerfile` to build a minimal container image.
 - [ ] **CI/CD**: Add GitHub Actions workflow to build and push the container to `ghcr.io` upon push to `main`.

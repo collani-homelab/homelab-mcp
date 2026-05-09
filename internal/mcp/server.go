@@ -3,6 +3,9 @@ package mcp
 import (
 	"context"
 	"log/slog"
+	"net/http"
+	"os"
+
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"homelab-mcp/internal/provider"
 )
@@ -121,6 +124,34 @@ func (s *Server) Run(ctx context.Context) error {
 		}, nil
 	})
 
+	transport := os.Getenv("MCP_TRANSPORT")
+	if transport == "sse" {
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "8080"
+		}
+		
+		sse := mcp.NewSSEHandler(func(req *http.Request) *mcp.Server {
+			return s.mcpServer
+		}, &mcp.SSEOptions{})
+		
+		// Basic CORS wrapper
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			sse.ServeHTTP(w, r)
+		})
+		
+		slog.Info("Starting MCP server via SSE", "port", port)
+		return http.ListenAndServe(":"+port, handler)
+	}
+
+	slog.Info("Starting MCP server via stdio")
 	return s.mcpServer.Run(ctx, &mcp.StdioTransport{})
 }
 

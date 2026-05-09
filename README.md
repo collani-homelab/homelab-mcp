@@ -43,10 +43,16 @@ mise run build
 
 ### Running
 
-The server uses `stdio` transport. You can run it directly, but it expects JSON-RPC input.
+The server supports `stdio` and `sse` transports. By default, it uses `stdio` and expects JSON-RPC input via standard in/out.
 
 ```bash
 mise run run
+```
+
+To run as an HTTP server using Server-Sent Events (SSE) transport, set the `MCP_TRANSPORT` variable:
+
+```bash
+MCP_TRANSPORT=sse PORT=8080 mise run run
 ```
 
 ### Testing
