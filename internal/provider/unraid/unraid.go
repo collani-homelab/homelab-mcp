@@ -130,6 +130,9 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
     state
     parityCheckStatus {
       status
+      progress
+      speed
+      duration
     }
     parities {
       name
