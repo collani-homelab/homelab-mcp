@@ -2,18 +2,12 @@
 
 A Model Context Protocol (MCP) server written in Go to provide AI assistants with context from my homelab environment, currently targeting Unraid and UniFi.
 
-## Current Status
+## Current Status & Roadmap
 
-- [x] **Step 1: Setup** - Initialized Go module and `mise.toml`.
-- [x] **Step 2: Skeleton** - Implemented basic MCP server with `stdio` transport and a "Hello World" provider.
-- [x] **Step 3: Testing Setup** - Unit tests implemented; MCP Inspector verification working.
-- [x] **Step 4: Unraid Integration** - GraphQL client for Docker containers.
-- [x] **Step 5: UniFi Integration** - Network client for active clients and devices.
-- [x] **Step 6: Refinement** - Enhanced logging and error handling.
-- [x] **Step 7: Expansion** - Added System Stats and Array Health to Unraid.
-- [x] **Step 8: Insights** - Added Network Health and PoE status to UniFi.
-- [x] **Step 9: Guidance** - Implemented MCP Prompts natively (`homelab_status_report` and `troubleshoot_client`).
-- [x] **Step 10: Optimization** - Implemented AI-friendly JSON pruning for UniFi to reduce token usage.
+We are currently working on **Phase 3** (Media Stack Expansion & Continuous Deployment). 
+
+* For detailed task tracking and historical progress, see [Design/Roadmap.md](Design/Roadmap.md).
+* For high-level design decisions and codebase structure, see [Design/Architecture.md](Design/Architecture.md).
 
 ## Capabilities
 
@@ -33,24 +27,6 @@ A Model Context Protocol (MCP) server written in Go to provide AI assistants wit
 - `homelab_status_report`: A pre-defined prompt that instructs the AI to fetch and summarize the Unraid system stats and UniFi network health.
 - `troubleshoot_client`: Requires a `mac` argument. Instructs the AI to query the UniFi clients list to help diagnose network issues for a specific device.
 
-
-## Architecture
-
-The project follows a provider-based architecture to keep integrations modular and easy to test.
-
-```text
-homelab-mcp/
-├── cmd/
-│   └── server/          # Main entry point
-├── internal/
-│   ├── mcp/            # MCP protocol implementation & handlers
-│   └── provider/       # Homelab integrations
-│       ├── provider.go # Interface definitions
-│       ├── hello/      # Simple test provider
-│       ├── unraid/     # Unraid GraphQL client
-│       └── unifi/      # UniFi API client
-└── .mise.toml          # Tooling & Environment
-```
 
 ## Getting Started
 
