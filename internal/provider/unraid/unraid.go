@@ -76,6 +76,21 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 			Name:     fmt.Sprintf("Unraid Array Status (%s)", p.name),
 			MIMEType: "application/json",
 		},
+		{
+			URI:      fmt.Sprintf("unraid://%s/vms", p.name),
+			Name:     fmt.Sprintf("Unraid Virtual Machines (%s)", p.name),
+			MIMEType: "application/json",
+		},
+		{
+			URI:      fmt.Sprintf("unraid://%s/system/ups", p.name),
+			Name:     fmt.Sprintf("Unraid UPS Status (%s)", p.name),
+			MIMEType: "application/json",
+		},
+		{
+			URI:      fmt.Sprintf("unraid://%s/notifications", p.name),
+			Name:     fmt.Sprintf("Unraid System Notifications (%s)", p.name),
+			MIMEType: "application/json",
+		},
 	}, nil
 }
 
@@ -95,6 +110,9 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 	containersURI := fmt.Sprintf("unraid://%s/containers", p.name)
 	statsURI := fmt.Sprintf("unraid://%s/system/stats", p.name)
 	arrayURI := fmt.Sprintf("unraid://%s/array/status", p.name)
+	vmsURI := fmt.Sprintf("unraid://%s/vms", p.name)
+	upsURI := fmt.Sprintf("unraid://%s/system/ups", p.name)
+	notificationsURI := fmt.Sprintf("unraid://%s/notifications", p.name)
 
 	var query string
 	switch uri {
@@ -143,6 +161,43 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
       name
       size
       status
+    }
+  }
+}`
+	case vmsURI:
+		query = `query {
+  vms {
+    domains {
+      name
+      state
+    }
+  }
+}`
+	case upsURI:
+		query = `query {
+  upsDevices {
+    name
+    status
+    battery {
+      chargeLevel
+      estimatedRuntime
+      health
+    }
+    power {
+      inputVoltage
+      loadPercentage
+    }
+  }
+}`
+	case notificationsURI:
+		query = `query {
+  notifications {
+    list(filter: { offset: 0, limit: 10, type: UNREAD }) {
+      title
+      subject
+      description
+      importance
+      formattedTimestamp
     }
   }
 }`

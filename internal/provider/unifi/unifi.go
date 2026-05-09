@@ -75,6 +75,11 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 			Name:     "UniFi PoE Status",
 			MIMEType: "application/json",
 		},
+		{
+			URI:      "unifi://network/alarms",
+			Name:     "UniFi Network Alarms",
+			MIMEType: "application/json",
+		},
 	}, nil
 }
 
@@ -87,6 +92,8 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 		apiPath = "stat/device"
 	case "unifi://network/health":
 		apiPath = "stat/health"
+	case "unifi://network/alarms":
+		apiPath = "rest/alarm"
 	default:
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}
