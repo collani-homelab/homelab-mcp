@@ -163,3 +163,11 @@ func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.Get
 	}
 	return nil, fmt.Errorf("prompt not found: %s", name)
 }
+
+func (p *Provider) GetTools() ([]mcp.Tool, error) {
+	return []mcp.Tool{}, nil
+}
+
+func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+	return nil, fmt.Errorf("tool not found: %s", name)
+}

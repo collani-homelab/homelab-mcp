@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
@@ -97,6 +98,35 @@ func (s *Server) AddProvider(p provider.Provider) {
 				return p.GetPrompt(req.Params.Name, req.Params.Arguments)
 			})
 		}
+	}
+
+	tools, err := p.GetTools()
+	if err != nil {
+		slog.Error("Failed to get tools from provider", "provider", p.Name(), "error", err)
+		return
+	}
+
+	if len(tools) > 0 {
+		slog.Info("Registering tools for provider", "provider", p.Name(), "count", len(tools))
+	}
+
+	for _, tool := range tools {
+		t := tool // Copy for closure
+		slog.Debug("Adding tool", "provider", p.Name(), "name", t.Name)
+		s.mcpServer.AddTool(&t, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			slog.Info("Calling tool", "name", req.Params.Name)
+			var args map[string]interface{}
+			if req.Params.Arguments != nil {
+				if err := json.Unmarshal(req.Params.Arguments, &args); err != nil {
+					slog.Error("Failed to unmarshal tool arguments", "tool", req.Params.Name, "error", err)
+					// Return a tool-level error so the LLM can self-correct
+					result := &mcp.CallToolResult{}
+					result.SetError(err)
+					return result, nil
+				}
+			}
+			return p.CallTool(req.Params.Name, args)
+		})
 	}
 }
 

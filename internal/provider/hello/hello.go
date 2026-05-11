@@ -40,3 +40,11 @@ func (h *HelloProvider) GetPrompts() ([]mcp.Prompt, error) {
 func (h *HelloProvider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
 	return nil, fmt.Errorf("prompt not found: %s", name)
 }
+
+func (h *HelloProvider) GetTools() ([]mcp.Tool, error) {
+	return []mcp.Tool{}, nil
+}
+
+func (h *HelloProvider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+	return nil, fmt.Errorf("tool not found: %s", name)
+}
