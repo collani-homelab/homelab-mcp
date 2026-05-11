@@ -32,10 +32,18 @@ type Provider interface {
 	GetResourceTemplates() ([]mcp.ResourceTemplate, error)
 	GetPrompts() ([]mcp.Prompt, error)
 	GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error)
+	GetTools() ([]mcp.Tool, error)
+	CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error)
 }
 ```
 
-## 4. Security & Safety
+## 4. Tooling Strategy
+To expand from Read-Only to full functionality (Read/Write), we prioritize using established Go SDKs (e.g., `golift.io/starr`) and a standardized **Tool Builder** pattern.
+- **SDKs**: Avoid manual API mapping; use community-maintained libraries.
+- **Tool Builder**: A utility in `internal/mcp` to map SDK methods to JSON-RPC tools with minimal boilerplate.
+- **Resources vs. Tools**: State/Data are exposed as Resources (Read-Only). Actions/Mutations are exposed as Tools.
+
+## 5. Security & Safety
 - **Transport**: Stdio-based transport (local execution only) for initial phases. Planned migration to SSE.
 - **Credentials**: Managed via `.env` (loaded by `mise`) or system environment variables.
 - **Permissions**: Ensure API tokens used are restricted to read-only scopes where supported.

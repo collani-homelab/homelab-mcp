@@ -5,6 +5,12 @@ import (
 	"fmt"
 	"homelab-mcp/internal/mcp"
 	"homelab-mcp/internal/provider/hello"
+	"homelab-mcp/internal/provider/lidarr"
+	"homelab-mcp/internal/provider/nzbget"
+	"homelab-mcp/internal/provider/plex"
+	"homelab-mcp/internal/provider/radarr"
+	"homelab-mcp/internal/provider/sonarr"
+	"homelab-mcp/internal/provider/tautulli"
 	"homelab-mcp/internal/provider/unifi"
 	"homelab-mcp/internal/provider/unraid"
 	"log/slog"
@@ -92,6 +98,109 @@ func setupServer() *mcp.Server {
 		}
 	} else {
 		slog.Warn("UNIFI_API_URL not set, skipping UniFi provider")
+	}
+
+	// Add Tautulli Provider
+	tautulliURL := os.Getenv("TAUTULLI_API_URL")
+	if tautulliURL != "" {
+		apiKey := os.Getenv("TAUTULLI_API_KEY")
+		skipVerify := os.Getenv("TAUTULLI_SKIP_VERIFY") == "true"
+
+		tautulliProvider, err := tautulli.NewProvider(tautulliURL, apiKey, skipVerify)
+		if err != nil {
+			slog.Error("Failed to initialize Tautulli provider", "error", err)
+		} else {
+			s.AddProvider(tautulliProvider)
+			slog.Info("Tautulli provider added", "url", tautulliURL)
+		}
+	} else {
+		slog.Warn("TAUTULLI_API_URL not set, skipping Tautulli provider")
+	}
+
+	// Add Plex Provider
+	plexURL := os.Getenv("PLEX_API_URL")
+	if plexURL != "" {
+		token := os.Getenv("PLEX_API_TOKEN")
+		skipVerify := os.Getenv("PLEX_SKIP_VERIFY") == "true"
+
+		plexProvider, err := plex.NewProvider(plexURL, token, skipVerify)
+		if err != nil {
+			slog.Error("Failed to initialize Plex provider", "error", err)
+		} else {
+			s.AddProvider(plexProvider)
+			slog.Info("Plex provider added", "url", plexURL)
+		}
+	} else {
+		slog.Warn("PLEX_API_URL not set, skipping Plex provider")
+	}
+
+	// Add Radarr Provider
+	radarrURL := os.Getenv("RADARR_API_URL")
+	if radarrURL != "" {
+		apiKey := os.Getenv("RADARR_API_KEY")
+		skipVerify := os.Getenv("RADARR_SKIP_VERIFY") == "true"
+
+		radarrProvider, err := radarr.NewProvider(radarrURL, apiKey, skipVerify)
+		if err != nil {
+			slog.Error("Failed to initialize Radarr provider", "error", err)
+		} else {
+			s.AddProvider(radarrProvider)
+			slog.Info("Radarr provider added", "url", radarrURL)
+		}
+	} else {
+		slog.Warn("RADARR_API_URL not set, skipping Radarr provider")
+	}
+
+	// Add Sonarr Provider
+	sonarrURL := os.Getenv("SONARR_API_URL")
+	if sonarrURL != "" {
+		apiKey := os.Getenv("SONARR_API_KEY")
+		skipVerify := os.Getenv("SONARR_SKIP_VERIFY") == "true"
+
+		sonarrProvider, err := sonarr.NewProvider(sonarrURL, apiKey, skipVerify)
+		if err != nil {
+			slog.Error("Failed to initialize Sonarr provider", "error", err)
+		} else {
+			s.AddProvider(sonarrProvider)
+			slog.Info("Sonarr provider added", "url", sonarrURL)
+		}
+	} else {
+		slog.Warn("SONARR_API_URL not set, skipping Sonarr provider")
+	}
+
+	// Add Lidarr Provider
+	lidarrURL := os.Getenv("LIDARR_API_URL")
+	if lidarrURL != "" {
+		apiKey := os.Getenv("LIDARR_API_KEY")
+		skipVerify := os.Getenv("LIDARR_SKIP_VERIFY") == "true"
+
+		lidarrProvider, err := lidarr.NewProvider(lidarrURL, apiKey, skipVerify)
+		if err != nil {
+			slog.Error("Failed to initialize Lidarr provider", "error", err)
+		} else {
+			s.AddProvider(lidarrProvider)
+			slog.Info("Lidarr provider added", "url", lidarrURL)
+		}
+	} else {
+		slog.Warn("LIDARR_API_URL not set, skipping Lidarr provider")
+	}
+
+	// Add NZBGet Provider
+	nzbgetURL := os.Getenv("NZBGET_API_URL")
+	if nzbgetURL != "" {
+		user := os.Getenv("NZBGET_API_USER")
+		pass := os.Getenv("NZBGET_API_PASS")
+		skipVerify := os.Getenv("NZBGET_SKIP_VERIFY") == "true"
+
+		nzbgetProvider, err := nzbget.NewProvider(nzbgetURL, user, pass, skipVerify)
+		if err != nil {
+			slog.Error("Failed to initialize NZBGet provider", "error", err)
+		} else {
+			s.AddProvider(nzbgetProvider)
+			slog.Info("NZBGet provider added", "url", nzbgetURL)
+		}
+	} else {
+		slog.Warn("NZBGET_API_URL not set, skipping NZBGet provider")
 	}
 
 	return s

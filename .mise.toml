@@ -23,3 +23,12 @@ run = "./homelab-mcp"
 description = "Launch the MCP Inspector with the compiled binary"
 depends = ["build"]
 run = "npx @modelcontextprotocol/inspector@latest ./homelab-mcp"
+
+[tasks.docker-build]
+description = "Build the Docker image"
+run = "docker buildx build -t homelab-mcp ."
+
+[tasks.docker-run]
+description = "Run the Docker container locally (SSE transport)"
+depends = ["docker-build"]
+run = "docker run --rm -it -p 8080:8080 --env-file .env -e PORT=8080 -e MCP_TRANSPORT=sse homelab-mcp"

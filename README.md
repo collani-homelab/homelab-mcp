@@ -41,6 +41,12 @@ We are currently working on **Phase 3** (Media Stack Expansion & Continuous Depl
 mise run build
 ```
 
+To build the Docker image:
+
+```bash
+mise run docker-build
+```
+
 ### Running
 
 The server supports `stdio` and `sse` transports. By default, it uses `stdio` and expects JSON-RPC input via standard in/out.
@@ -49,10 +55,16 @@ The server supports `stdio` and `sse` transports. By default, it uses `stdio` an
 mise run run
 ```
 
-To run as an HTTP server using Server-Sent Events (SSE) transport, set the `MCP_TRANSPORT` variable:
+To run as an HTTP server using Server-Sent Events (SSE) transport natively:
 
 ```bash
 MCP_TRANSPORT=sse PORT=8080 mise run run
+```
+
+To build and run the Docker container locally (which defaults to SSE on port 8080):
+
+```bash
+mise run docker-run
 ```
 
 ### Testing
