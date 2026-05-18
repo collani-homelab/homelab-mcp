@@ -86,7 +86,6 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 		// otherwise we can fetch missing via /api/v3/movie and pruning or similar?
 		// Actually Radarr supports /api/v3/movie?apikey=X where hasFile=false or we can just pull queue.
 		// Let's just use queue and status for now, and queue details for missing.
-		endpoint = "/api/v3/movie?apikey=" + p.apiKey // We'll add apikey in header anyway, let's just use the path
 		endpoint = "/api/v3/movie" // we will filter in code
 	default:
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
@@ -112,7 +111,7 @@ func (p *Provider) fetchFromRadarr(apiPath, uri string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {

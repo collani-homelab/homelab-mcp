@@ -59,7 +59,7 @@ func TestProvider_GetResourceContent_SuccessAPIKey(t *testing.T) {
 			t.Errorf("missing or invalid API token: %s", r.Header.Get("X-API-KEY"))
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"data": [{"mac": "00:11:22:33:44:55", "name": "API Key Client"}]}`))
+		_, _ = w.Write([]byte(`{"data": [{"mac": "00:11:22:33:44:55", "name": "API Key Client"}]}`))
 	})
 
 	ts := httptest.NewServer(mux)
@@ -88,7 +88,7 @@ func TestProvider_GetResourceContent_Fallback(t *testing.T) {
 			t.Errorf("missing or invalid API token: %s", r.Header.Get("X-API-KEY"))
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"data": [{"mac": "00:11:22:33:44:55", "name": "Fallback Client"}]}`))
+		_, _ = w.Write([]byte(`{"data": [{"mac": "00:11:22:33:44:55", "name": "Fallback Client"}]}`))
 	})
 
 	ts := httptest.NewServer(mux)
@@ -110,7 +110,7 @@ func TestProvider_GetResourceContent_Devices(t *testing.T) {
 	
 	mux.HandleFunc("/proxy/network/api/s/default/stat/device", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"data": [{"name": "U6-Pro", "type": "uap"}]}`))
+		_, _ = w.Write([]byte(`{"data": [{"name": "U6-Pro", "type": "uap"}]}`))
 	})
 
 	ts := httptest.NewServer(mux)

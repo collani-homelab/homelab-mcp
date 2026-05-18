@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // rpcRequest defines the structure for a JSON-RPC request.
@@ -21,17 +20,7 @@ type rpcRequest struct {
 	Params  interface{} `json:"params,omitempty"`
 }
 
-// rpcResponse defines the structure for a JSON-RPC response.
-type rpcResponse struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      int             `json:"id"`
-	Result  json.RawMessage `json:"result,omitempty"`
-}
 
-// listResourcesResult is used to unmarshal the result of a resources/list call.
-type listResourcesResult struct {
-	Resources []mcp.Resource `json:"resources"`
-}
 
 // writeRequest is a helper to marshal and send a JSON-RPC request to the server's stdin pipe.
 func writeRequest(t *testing.T, w *os.File, req interface{}) {

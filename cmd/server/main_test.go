@@ -6,41 +6,49 @@ import (
 	"testing"
 )
 
+func unsetEnv(key string) {
+	_ = os.Unsetenv(key)
+}
+
+func setEnv(key, value string) {
+	_ = os.Setenv(key, value)
+}
+
 func clearUnraidEnv() {
 	for _, env := range os.Environ() {
 		if strings.HasPrefix(env, "UNRAID_") {
 			parts := strings.SplitN(env, "=", 2)
-			os.Unsetenv(parts[0])
+			unsetEnv(parts[0])
 		}
 	}
 }
 
 func clearUnifiEnv() {
-	os.Unsetenv("UNIFI_API_URL")
-	os.Unsetenv("UNIFI_API_KEY")
-	os.Unsetenv("UNIFI_SKIP_VERIFY")
+	unsetEnv("UNIFI_API_URL")
+	unsetEnv("UNIFI_API_KEY")
+	unsetEnv("UNIFI_SKIP_VERIFY")
 }
 
 func clearMediaEnv() {
-	os.Unsetenv("TAUTULLI_API_URL")
-	os.Unsetenv("TAUTULLI_API_KEY")
-	os.Unsetenv("TAUTULLI_SKIP_VERIFY")
-	os.Unsetenv("PLEX_API_URL")
-	os.Unsetenv("PLEX_API_TOKEN")
-	os.Unsetenv("PLEX_SKIP_VERIFY")
-	os.Unsetenv("RADARR_API_URL")
-	os.Unsetenv("RADARR_API_KEY")
-	os.Unsetenv("RADARR_SKIP_VERIFY")
-	os.Unsetenv("SONARR_API_URL")
-	os.Unsetenv("SONARR_API_KEY")
-	os.Unsetenv("SONARR_SKIP_VERIFY")
-	os.Unsetenv("LIDARR_API_URL")
-	os.Unsetenv("LIDARR_API_KEY")
-	os.Unsetenv("LIDARR_SKIP_VERIFY")
-	os.Unsetenv("NZBGET_API_URL")
-	os.Unsetenv("NZBGET_API_USER")
-	os.Unsetenv("NZBGET_API_PASS")
-	os.Unsetenv("NZBGET_SKIP_VERIFY")
+	unsetEnv("TAUTULLI_API_URL")
+	unsetEnv("TAUTULLI_API_KEY")
+	unsetEnv("TAUTULLI_SKIP_VERIFY")
+	unsetEnv("PLEX_API_URL")
+	unsetEnv("PLEX_API_TOKEN")
+	unsetEnv("PLEX_SKIP_VERIFY")
+	unsetEnv("RADARR_API_URL")
+	unsetEnv("RADARR_API_KEY")
+	unsetEnv("RADARR_SKIP_VERIFY")
+	unsetEnv("SONARR_API_URL")
+	unsetEnv("SONARR_API_KEY")
+	unsetEnv("SONARR_SKIP_VERIFY")
+	unsetEnv("LIDARR_API_URL")
+	unsetEnv("LIDARR_API_KEY")
+	unsetEnv("LIDARR_SKIP_VERIFY")
+	unsetEnv("NZBGET_API_URL")
+	unsetEnv("NZBGET_API_USER")
+	unsetEnv("NZBGET_API_PASS")
+	unsetEnv("NZBGET_SKIP_VERIFY")
 }
 
 
@@ -68,9 +76,9 @@ func TestSetupServer_ProvidersAdded(t *testing.T) {
 	clearMediaEnv()
 
 	// Set URL to a dummy value
-	os.Setenv("UNRAID_URL", "http://localhost")
-	os.Setenv("UNIFI_API_URL", "https://unifi")
-	os.Setenv("UNIFI_API_KEY", "dummy-key")
+	setEnv("UNRAID_URL", "http://localhost")
+	setEnv("UNIFI_API_URL", "https://unifi")
+	setEnv("UNIFI_API_KEY", "dummy-key")
 	defer func() {
 		clearUnraidEnv()
 		clearUnifiEnv()

@@ -86,7 +86,7 @@ func TestProvider_GetResourceContent_Success(t *testing.T) {
 			t.Errorf("expected API key 'test-key', got %s", r.Header.Get("x-api-key"))
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(mockResponse))
+		_, _ = w.Write([]byte(mockResponse))
 	}))
 	defer ts.Close()
 
@@ -115,7 +115,7 @@ func TestProvider_GetResourceContent_Errors(t *testing.T) {
 			"errors": [{"message": "Some GraphQL Error"}]
 		}`
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(errorResponse))
+		_, _ = w.Write([]byte(errorResponse))
 	}))
 	defer ts.Close()
 
@@ -137,7 +137,7 @@ func TestProvider_GetResourceContent_Errors(t *testing.T) {
 func TestProvider_GetResourceContent_HTTPError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Internal Server Error"))
+		_, _ = w.Write([]byte("Internal Server Error"))
 	}))
 	defer ts.Close()
 
@@ -195,9 +195,9 @@ func TestProvider_GetResourceContent_ContainerLogs(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		
 		if strings.Contains(query, "containers") {
-			w.Write([]byte(containerListResponse))
+			_, _ = w.Write([]byte(containerListResponse))
 		} else if strings.Contains(query, "logs") {
-			w.Write([]byte(logsResponse))
+			_, _ = w.Write([]byte(logsResponse))
 		} else {
 			t.Errorf("unexpected GraphQL query: %s", query)
 		}
