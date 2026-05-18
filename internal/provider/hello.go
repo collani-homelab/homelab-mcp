@@ -33,3 +33,11 @@ func (p *HelloProvider) GetResourceContent(uri string) (string, error) {
 	// Return an error if the AI asks for a resource URI we don't own
 	return "", fmt.Errorf("resource not found: %s", uri)
 }
+
+func (p *HelloProvider) GetTools() ([]mcp.Tool, error) {
+	return []mcp.Tool{}, nil
+}
+
+func (p *HelloProvider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+	return nil, fmt.Errorf("tool not found: %s", name)
+}

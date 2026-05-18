@@ -1,4 +1,4 @@
-package unifi
+package lidarr
 
 import (
 	"context"
@@ -50,92 +50,57 @@ func NewProvider(baseURL, apiKey string, skipVerify bool) (*Provider, error) {
 }
 
 func (p *Provider) Name() string {
-	return "UniFi"
+	return "Lidarr"
 }
 
 func (p *Provider) GetResources() ([]mcp.Resource, error) {
 	return []mcp.Resource{
 		{
-			URI:      "unifi://clients",
-			Name:     "UniFi Active Clients",
+			URI:      "lidarr://queue",
+			Name:     "Lidarr Download Queue",
 			MIMEType: "application/json",
 		},
 		{
-			URI:      "unifi://devices",
-			Name:     "UniFi Devices",
+			URI:      "lidarr://system/status",
+			Name:     "Lidarr System Status",
 			MIMEType: "application/json",
 		},
 		{
-			URI:      "unifi://network/health",
-			Name:     "UniFi Network Health",
-			MIMEType: "application/json",
-		},
-		{
-			URI:      "unifi://switches/poe",
-			Name:     "UniFi PoE Status",
-			MIMEType: "application/json",
-		},
-		{
-			URI:      "unifi://network/alarms",
-			Name:     "UniFi Network Alarms",
+			URI:      "lidarr://artist",
+			Name:     "Lidarr Artists",
 			MIMEType: "application/json",
 		},
 	}, nil
 }
 
 func (p *Provider) GetResourceContent(uri string) (string, error) {
-	var apiPath string
+	var endpoint string
 	switch uri {
-	case "unifi://clients":
-		apiPath = "stat/sta"
-	case "unifi://devices", "unifi://switches/poe":
-		apiPath = "stat/device"
-	case "unifi://network/health":
-		apiPath = "stat/health"
-	case "unifi://network/alarms":
-		apiPath = "rest/alarm"
+	case "lidarr://queue":
+		endpoint = "/api/v1/queue"
+	case "lidarr://system/status":
+		endpoint = "/api/v1/system/status"
+	case "lidarr://artist":
+		endpoint = "/api/v1/artist"
 	default:
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}
 
-	return p.fetchFromUniFi(apiPath)
+	return p.fetchFromLidarr(endpoint, uri)
 }
 
-func (p *Provider) fetchFromUniFi(apiPath string) (string, error) {
+func (p *Provider) fetchFromLidarr(apiPath, uri string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	var content string
-	var err error
-
-	// Try with /proxy/network/api/s/default prefix first
-	endpoint := fmt.Sprintf("%s/proxy/network/api/s/default/%s", p.baseURL, apiPath)
-	content, err = p.doRequest(ctx, endpoint)
-	if err != nil {
-		// Fallback to /api/s/default prefix
-		fallbackEndpoint := fmt.Sprintf("%s/api/s/default/%s", p.baseURL, apiPath)
-		content, err = p.doRequest(ctx, fallbackEndpoint)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	pruned, err := provider.PruneJSON([]byte(content), []string{"_id", "site_id", "oui", "fingerprint", "_is_guest_by_uap", "tx_bytes-r", "rx_bytes-r"})
-	if err == nil {
-		return string(pruned), nil
-	}
-	return content, nil
-}
-
-func (p *Provider) doRequest(ctx context.Context, endpoint string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
+	fullURL := fmt.Sprintf("%s%s", p.baseURL, apiPath)
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("X-API-KEY", p.apiKey)
+	req.Header.Set("X-Api-Key", p.apiKey)
 
 	resp, err := p.client.Do(req)
 	if err != nil {
@@ -152,7 +117,15 @@ func (p *Provider) doRequest(ctx context.Context, endpoint string) (string, erro
 		return "", fmt.Errorf("API error: status=%d body=%s", resp.StatusCode, string(bodyBytes))
 	}
 
-	return string(bodyBytes), nil
+	content := string(bodyBytes)
+
+	// Prune heavy keys
+	pruned, err := provider.PruneJSON([]byte(content), []string{"images", "overview", "links", "statistics"})
+	if err == nil {
+		content = string(pruned)
+	}
+
+	return content, nil
 }
 
 func (p *Provider) GetResourceTemplates() ([]mcp.ResourceTemplate, error) {
@@ -162,28 +135,21 @@ func (p *Provider) GetResourceTemplates() ([]mcp.ResourceTemplate, error) {
 func (p *Provider) GetPrompts() ([]mcp.Prompt, error) {
 	return []mcp.Prompt{
 		{
-			Name:        "troubleshoot_client",
-			Description: "Helps diagnose why a specific MAC address might be having issues.",
-			Arguments: []*mcp.PromptArgument{
-				{
-					Name:        "mac",
-					Description: "The MAC address of the client to troubleshoot",
-					Required:    true,
-				},
-			},
+			Name:        "check_music_downloads",
+			Description: "Checks the Lidarr queue for active music downloads and their status.",
+			Arguments:   []*mcp.PromptArgument{},
 		},
 	}, nil
 }
 
 func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
-	if name == "troubleshoot_client" {
-		mac := arguments["mac"]
+	if name == "check_music_downloads" {
 		return &mcp.GetPromptResult{
 			Messages: []*mcp.PromptMessage{
 				{
 					Role: "user",
 					Content: &mcp.TextContent{
-						Text: fmt.Sprintf("I need to troubleshoot a client with MAC address %s. Please check the unifi://clients resource for this MAC, check its experience score, and suggest what might be wrong.", mac),
+						Text: "Please check the lidarr://queue resource and tell me what music is currently downloading and its progress.",
 					},
 				},
 			},

@@ -1,5 +1,5 @@
 [tools]
-go = "1.22"
+go = "1.26"
 node = "lts" # Required for the MCP Inspector (npx)
 
 [env]
@@ -10,9 +10,13 @@ _.file = ".env"
 description = "Build the MCP server binary"
 run = "go build -o homelab-mcp ./cmd/server"
 
+[tasks.lint]
+description = "Run golangci-lint static analysis"
+run = "golangci-lint run"
+
 [tasks.test]
-description = "Run all Go unit and integration tests"
-run = "go test -v ./..."
+description = "Run all Go unit and integration tests with coverage"
+run = "go test -v -race -cover ./..."
 
 [tasks.run]
 description = "Build and run the MCP server manually"
@@ -23,3 +27,16 @@ run = "./homelab-mcp"
 description = "Launch the MCP Inspector with the compiled binary"
 depends = ["build"]
 run = "npx @modelcontextprotocol/inspector@latest ./homelab-mcp"
+
+[tasks.docker-build]
+description = "Build the Docker image"
+run = "docker buildx build -t ${IMAGE_TAG:-homelab-mcp} ."
+
+[tasks.docker-push]
+description = "Push the Docker image to the registry"
+run = "docker push ${IMAGE_TAG}"
+
+[tasks.docker-run]
+description = "Run the Docker container locally (SSE transport)"
+depends = ["docker-build"]
+run = "docker run --rm -it -p 8080:8080 --env-file .env -e PORT=8080 -e MCP_TRANSPORT=sse ${IMAGE_TAG:-homelab-mcp}"

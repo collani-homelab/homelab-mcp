@@ -2,7 +2,11 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
+	"net/http"
+	"os"
+
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"homelab-mcp/internal/provider"
 )
@@ -95,6 +99,35 @@ func (s *Server) AddProvider(p provider.Provider) {
 			})
 		}
 	}
+
+	tools, err := p.GetTools()
+	if err != nil {
+		slog.Error("Failed to get tools from provider", "provider", p.Name(), "error", err)
+		return
+	}
+
+	if len(tools) > 0 {
+		slog.Info("Registering tools for provider", "provider", p.Name(), "count", len(tools))
+	}
+
+	for _, tool := range tools {
+		t := tool // Copy for closure
+		slog.Debug("Adding tool", "provider", p.Name(), "name", t.Name)
+		s.mcpServer.AddTool(&t, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			slog.Info("Calling tool", "name", req.Params.Name)
+			var args map[string]interface{}
+			if req.Params.Arguments != nil {
+				if err := json.Unmarshal(req.Params.Arguments, &args); err != nil {
+					slog.Error("Failed to unmarshal tool arguments", "tool", req.Params.Name, "error", err)
+					// Return a tool-level error so the LLM can self-correct
+					result := &mcp.CallToolResult{}
+					result.SetError(err)
+					return result, nil
+				}
+			}
+			return p.CallTool(req.Params.Name, args)
+		})
+	}
 }
 
 // Providers returns the list of registered providers (useful for testing).
@@ -121,6 +154,66 @@ func (s *Server) Run(ctx context.Context) error {
 		}, nil
 	})
 
+	mediaPrompt := mcp.Prompt{
+		Name:        "media_stack_status",
+		Description: "Provides a consolidated status report for the entire media stack: active Plex streams, Usenet download progress, and the TV/movie/music acquisition queues.",
+	}
+	s.mcpServer.AddPrompt(&mediaPrompt, func(ctx context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+		return &mcp.GetPromptResult{
+			Messages: []*mcp.PromptMessage{
+				{
+					Role: "user",
+					Content: &mcp.TextContent{
+						Text: `Please read the following resources and provide a consolidated media stack status report:
+
+**Streaming Activity**
+- plex://sessions — who is currently watching, what they're watching, and the stream quality.
+- tautulli://activity — current transcoding/direct play sessions from Tautulli.
+
+**Download Queue**
+- nzbget://status — overall NZBGet download speed, paused/running state, and remaining data.
+- nzbget://listgroups — individual items currently downloading via Usenet.
+
+**Acquisition Queues**
+- sonarr://queue — TV episodes currently queued or downloading in Sonarr.
+- radarr://queue — movies currently queued or downloading in Radarr.
+- lidarr://queue — music currently queued or downloading in Lidarr.
+
+Summarize into three sections: 1) What's streaming right now, 2) What's downloading and at what speed, 3) Any queue issues or stalled items that need attention.`,
+					},
+				},
+			},
+		}, nil
+	})
+
+	transport := os.Getenv("MCP_TRANSPORT")
+	if transport == "sse" {
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "8080"
+		}
+		
+		sse := mcp.NewSSEHandler(func(req *http.Request) *mcp.Server {
+			return s.mcpServer
+		}, &mcp.SSEOptions{})
+		
+		// Basic CORS wrapper
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			sse.ServeHTTP(w, r)
+		})
+		
+		slog.Info("Starting MCP server via SSE", "port", port)
+		return http.ListenAndServe(":"+port, handler)
+	}
+
+	slog.Info("Starting MCP server via stdio")
 	return s.mcpServer.Run(ctx, &mcp.StdioTransport{})
 }
 
