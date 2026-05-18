@@ -22,6 +22,12 @@ homelab-mcp/
 └── .mise.toml          # Tooling & Environment
 ```
 
+## 2.1 Platform Integration & Deployment
+This repository follows the **Homelab Platform "Golden Path"** for deployment.
+- **`platform.json`**: Contains service metadata (name, port, env vars) used by the `homelab-platform` repo for automated deployment.
+- **CI/CD**: Local builds are handled by a **Self-Hosted GitHub Runner** on the SRE machine, pushing to a local Docker registry on Unraid.
+- **Reusable Workflows**: The CD pipeline is defined in the `homelab-platform` repo and called by this application repo to maintain a standardized deployment flow.
+
 ## 3. Core Interface: The Provider
 To keep the design "KISS", every integration must implement a simple interface:
 ```go

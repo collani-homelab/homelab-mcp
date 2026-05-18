@@ -154,6 +154,38 @@ func (s *Server) Run(ctx context.Context) error {
 		}, nil
 	})
 
+	mediaPrompt := mcp.Prompt{
+		Name:        "media_stack_status",
+		Description: "Provides a consolidated status report for the entire media stack: active Plex streams, Usenet download progress, and the TV/movie/music acquisition queues.",
+	}
+	s.mcpServer.AddPrompt(&mediaPrompt, func(ctx context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+		return &mcp.GetPromptResult{
+			Messages: []*mcp.PromptMessage{
+				{
+					Role: "user",
+					Content: &mcp.TextContent{
+						Text: `Please read the following resources and provide a consolidated media stack status report:
+
+**Streaming Activity**
+- plex://sessions — who is currently watching, what they're watching, and the stream quality.
+- tautulli://activity — current transcoding/direct play sessions from Tautulli.
+
+**Download Queue**
+- nzbget://status — overall NZBGet download speed, paused/running state, and remaining data.
+- nzbget://listgroups — individual items currently downloading via Usenet.
+
+**Acquisition Queues**
+- sonarr://queue — TV episodes currently queued or downloading in Sonarr.
+- radarr://queue — movies currently queued or downloading in Radarr.
+- lidarr://queue — music currently queued or downloading in Lidarr.
+
+Summarize into three sections: 1) What's streaming right now, 2) What's downloading and at what speed, 3) Any queue issues or stalled items that need attention.`,
+					},
+				},
+			},
+		}, nil
+	})
+
 	transport := os.Getenv("MCP_TRANSPORT")
 	if transport == "sse" {
 		port := os.Getenv("PORT")

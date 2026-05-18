@@ -37,10 +37,12 @@ This document tracks the iterative goals and completed phases of the project. Fo
   - [x] Add `Starr` apps (`Radarr`, `Sonarr`, `Lidarr`) for queue and missing media contexts. (Radarr, Sonarr, Lidarr implemented)
   - [x] Add `nzbget` for Usenet download management. (NZBGet implemented)
   - [x] Manual verification
-  - [ ] **Standardization**: Implement a `ToolBuilder` pattern in `internal/mcp` to simplify wrapping SDK methods into MCP Tools.
+  - [x] **Standardization**: Implement a `ToolBuilder` pattern in `internal/mcp` to simplify wrapping SDK methods into MCP Tools.
   - [ ] Add prompts and resources as needed.
-  - [ ] Create a status prompt to give the current status of the media stack. 
+  - [x] Create a status prompt to give the current status of the media stack. 
 - [x] **Dockerization**: Create a multi-stage `Dockerfile` to build a minimal container image. Use scratch as the base image and build up the image with the dependencies we need. 
   - [x] Create `docker-compose.yml` for local development.
-- [ ] **CI/CD**: TODO - What are local options? Using github to manage repositories, what local options do I have for KISS style workflow?
-- [ ] **Deployment**: Provision the container on Unraid with AutoUpdate to continuously serve the latest `main` branch.
+- [x] **CI/CD**: Implemented `ci.yml` and `platform.json` for integration with the new `homelab-platform` "Golden Path".
+  - [x] Add docker registry to the SRE machine configuration and update `homelab-mcp` to use the new local registry.
+  - [ ] Verify the new CI/CD pipeline.
+- [ ] **Deployment**: Setup Self-Hosted Runner and Local Registry on Unraid to serve the latest `main` branch.
