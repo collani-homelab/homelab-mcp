@@ -1,6 +1,6 @@
 # Homelab MCP Roadmap
 
-This document tracks the iterative goals and completed phases of the project. For high-level system design and coding patterns, refer to [Architecture.md](Architecture.md).
+This document tracks the iterative goals and completed phases of the project. For high-level system design and coding patterns, refer to [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Phase 1: Read-Only Foundation (Complete)
 - [x] **Setup**: Initialize Go module and `mise.toml`.
