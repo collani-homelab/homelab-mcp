@@ -8,6 +8,6 @@ jobs:
   deploy:
     uses: wcollani/homelab-platform/.github/workflows/reusable-go-deploy.yml@main
     with:
-      service-name: "homelab-mcp"
+      service_name: "homelab-mcp"
       registry_url: "http://192.168.99.178:5000"
     secrets: inherit
