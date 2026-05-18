@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -104,6 +105,52 @@ type graphQLResponse struct {
 	Errors []struct {
 		Message string `json:"message"`
 	} `json:"errors,omitempty"`
+}
+
+func (p *Provider) queryGraphQL(query string) ([]byte, error) {
+	reqBody, err := json.Marshal(graphQLRequest{Query: query})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", p.baseURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	if p.apiKey != "" {
+		req.Header.Set("x-api-key", p.apiKey)
+	}
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API error: status=%d body=%s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var gqlResp graphQLResponse
+	if err := json.Unmarshal(bodyBytes, &gqlResp); err != nil {
+		return nil, fmt.Errorf("failed to parse GraphQL response: %w", err)
+	}
+
+	if len(gqlResp.Errors) > 0 {
+		return nil, fmt.Errorf("GraphQL error: %s", gqlResp.Errors[0].Message)
+	}
+
+	return gqlResp.Data, nil
 }
 
 func (p *Provider) GetResourceContent(uri string) (string, error) {
@@ -203,63 +250,107 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 }`
 	default:
 		// Check for container logs template match
-		var containerName string
-		if _, err := fmt.Sscanf(uri, fmt.Sprintf("unraid://%s/containers/%%s/logs", p.name), &containerName); err == nil {
-			// A real implementation would fetch docker logs here using GraphQL or Docker API.
-			// Currently Unraid GraphQL for docker logs is restricted or complex, so we return a placeholder.
-			return fmt.Sprintf("Logs for container %s are not yet implemented natively.", containerName), nil
+		prefix := fmt.Sprintf("unraid://%s/containers/", p.name)
+		suffix := "/logs"
+		if strings.HasPrefix(uri, prefix) && strings.HasSuffix(uri, suffix) {
+			containerName := strings.TrimSuffix(strings.TrimPrefix(uri, prefix), suffix)
+			if containerName != "" && !strings.Contains(containerName, "/") {
+				// Step 1: Query containers list to get matching container ID
+			listQuery := `query {
+				docker {
+					containers {
+						id
+						names
+					}
+				}
+			}`
+			dataBytes, err := p.queryGraphQL(listQuery)
+			if err != nil {
+				return "", fmt.Errorf("failed to list containers: %w", err)
+			}
+
+			var containersResp struct {
+				Docker struct {
+					Containers []struct {
+						ID    string   `json:"id"`
+						Names []string `json:"names"`
+					} `json:"containers"`
+				} `json:"docker"`
+			}
+			if err := json.Unmarshal(dataBytes, &containersResp); err != nil {
+				return "", fmt.Errorf("failed to parse container list response: %w", err)
+			}
+
+			var targetID string
+			for _, container := range containersResp.Docker.Containers {
+				matched := false
+				for _, name := range container.Names {
+					if name == containerName || name == "/"+containerName || strings.TrimPrefix(name, "/") == containerName {
+						matched = true
+						break
+					}
+				}
+				if matched {
+					targetID = container.ID
+					break
+				}
+			}
+
+			if targetID == "" {
+				return "", fmt.Errorf("container %s not found on Unraid (%s)", containerName, p.name)
+			}
+
+			// Step 2: Query the container logs using the target ID
+			logsQuery := fmt.Sprintf(`query {
+				docker {
+					logs(id: "%s", tail: 100) {
+						lines {
+							timestamp
+							message
+						}
+					}
+				}
+			}`, targetID)
+
+			logsDataBytes, err := p.queryGraphQL(logsQuery)
+			if err != nil {
+				return "", fmt.Errorf("failed to fetch container logs: %w", err)
+			}
+
+			var logsResp struct {
+				Docker struct {
+					Logs struct {
+						Lines []struct {
+							Timestamp string `json:"timestamp"`
+							Message   string `json:"message"`
+						} `json:"lines"`
+					} `json:"logs"`
+				} `json:"docker"`
+			}
+			if err := json.Unmarshal(logsDataBytes, &logsResp); err != nil {
+				return "", fmt.Errorf("failed to parse container logs response: %w", err)
+			}
+
+			// Step 3: Format the logs as plain text
+			var buf bytes.Buffer
+			for _, line := range logsResp.Docker.Logs.Lines {
+				if line.Timestamp != "" {
+					fmt.Fprintf(&buf, "[%s] %s\n", line.Timestamp, line.Message)
+				} else {
+					fmt.Fprintf(&buf, "%s\n", line.Message)
+				}
+			}
+			return buf.String(), nil
+			}
 		}
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}
 
-	reqBody, err := json.Marshal(graphQLRequest{Query: query})
+	dataBytes, err := p.queryGraphQL(query)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal query: %w", err)
+		return "", err
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// The .env file from the user already has /graphql appended to the URL.
-	// We should be careful. Let's just use the baseURL if it ends with /graphql, otherwise append it.
-	// But let's just use the user's provided URL directly as the endpoint for now.
-	endpoint := p.baseURL
-	
-	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(reqBody))
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	if p.apiKey != "" {
-		req.Header.Set("x-api-key", p.apiKey)
-	}
-
-	resp, err := p.client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("API error: status=%d body=%s", resp.StatusCode, string(bodyBytes))
-	}
-
-	var gqlResp graphQLResponse
-	if err := json.Unmarshal(bodyBytes, &gqlResp); err != nil {
-		return "", fmt.Errorf("failed to parse GraphQL response: %w", err)
-	}
-
-	if len(gqlResp.Errors) > 0 {
-		return "", fmt.Errorf("GraphQL error: %s", gqlResp.Errors[0].Message)
-	}
-
-	return string(gqlResp.Data), nil
+	return string(dataBytes), nil
 }
 
 func (p *Provider) GetResourceTemplates() ([]mcp.ResourceTemplate, error) {

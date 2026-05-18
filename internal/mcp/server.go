@@ -193,23 +193,25 @@ Summarize into three sections: 1) What's streaming right now, 2) What's download
 			port = "8080"
 		}
 		
-		sse := mcp.NewSSEHandler(func(req *http.Request) *mcp.Server {
+		mcpHandler := mcp.NewStreamableHTTPHandler(func(req *http.Request) *mcp.Server {
 			return s.mcpServer
-		}, &mcp.SSEOptions{})
+		}, &mcp.StreamableHTTPOptions{
+			DisableLocalhostProtection: true,
+		})
 		
-		// Basic CORS wrapper
+		// CORS wrapper matching the working provisioner server
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version")
 			if r.Method == "OPTIONS" {
 				w.WriteHeader(http.StatusOK)
 				return
 			}
-			sse.ServeHTTP(w, r)
+			mcpHandler.ServeHTTP(w, r)
 		})
 		
-		slog.Info("Starting MCP server via SSE", "port", port)
+		slog.Info("Starting MCP server via Streamable HTTP (SSE compatible)", "port", port)
 		return http.ListenAndServe(":"+port, handler)
 	}
 

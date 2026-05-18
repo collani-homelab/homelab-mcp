@@ -148,3 +148,74 @@ func TestProvider_GetResourceContent_HTTPError(t *testing.T) {
 		t.Errorf("expected HTTP 500 error, got %v", err)
 	}
 }
+
+func TestProvider_GetResourceContent_ContainerLogs(t *testing.T) {
+	containerListResponse := `{
+		"data": {
+			"docker": {
+				"containers": [
+					{
+						"id": "123",
+						"names": ["/test-container"]
+					}
+				]
+			}
+		}
+	}`
+
+	logsResponse := `{
+		"data": {
+			"docker": {
+				"logs": {
+					"lines": [
+						{
+							"timestamp": "2026-05-18T14:00:00Z",
+							"message": "Log line 1"
+						},
+						{
+							"timestamp": "2026-05-18T14:01:00Z",
+							"message": "Log line 2"
+						}
+					]
+				}
+			}
+		}
+	}`
+
+	requestCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		
+		var reqBody map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+			t.Errorf("failed to decode request body: %v", err)
+		}
+		
+		query, _ := reqBody["query"].(string)
+		w.WriteHeader(http.StatusOK)
+		
+		if strings.Contains(query, "containers") {
+			w.Write([]byte(containerListResponse))
+		} else if strings.Contains(query, "logs") {
+			w.Write([]byte(logsResponse))
+		} else {
+			t.Errorf("unexpected GraphQL query: %s", query)
+		}
+	}))
+	defer ts.Close()
+
+	p, _ := NewProvider("test-server", ts.URL, "", false)
+	content, err := p.GetResourceContent("unraid://test-server/containers/test-container/logs")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	expectedLogs := "[2026-05-18T14:00:00Z] Log line 1\n[2026-05-18T14:01:00Z] Log line 2\n"
+	if content != expectedLogs {
+		t.Errorf("expected logs:\n%q\ngot:\n%q", expectedLogs, content)
+	}
+
+	if requestCount != 2 {
+		t.Errorf("expected 2 requests, got %d", requestCount)
+	}
+}

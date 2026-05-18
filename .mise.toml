@@ -30,7 +30,7 @@ run = "npx @modelcontextprotocol/inspector@latest ./homelab-mcp"
 
 [tasks.docker-build]
 description = "Build the Docker image"
-run = "docker buildx build -t ${IMAGE_TAG:-homelab-mcp} ."
+run = "docker build -t ${IMAGE_TAG:-homelab-mcp} ."
 
 [tasks.docker-push]
 description = "Push the Docker image to the registry"
