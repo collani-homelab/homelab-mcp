@@ -60,13 +60,26 @@ func TestSetupServer_ProvidersSkipped(t *testing.T) {
 	s := setupServer()
 	providers := s.Providers()
 
-	// Expecting only the Hello provider since URL is omitted
-	if len(providers) != 1 {
-		t.Fatalf("expected 1 provider, got %d", len(providers))
+	// Expecting Hello and RAG context providers since other URLs are omitted
+	if len(providers) != 2 {
+		t.Fatalf("expected 2 providers, got %d", len(providers))
 	}
 
-	if providers[0].Name() != "hello" {
-		t.Errorf("expected hello provider, got %s", providers[0].Name())
+	hasHello := false
+	hasRAG := false
+	for _, p := range providers {
+		if p.Name() == "hello" {
+			hasHello = true
+		} else if p.Name() == "homelab-context" {
+			hasRAG = true
+		}
+	}
+
+	if !hasHello {
+		t.Errorf("expected hello provider to be registered")
+	}
+	if !hasRAG {
+		t.Errorf("expected homelab-context provider to be registered")
 	}
 }
 
@@ -88,18 +101,21 @@ func TestSetupServer_ProvidersAdded(t *testing.T) {
 	s := setupServer()
 	providers := s.Providers()
 
-	// Expecting Hello, Unraid, and UniFi providers
-	if len(providers) != 3 {
-		t.Fatalf("expected 3 providers, got %d", len(providers))
+	// Expecting Hello, RAG context, Unraid, and UniFi providers
+	if len(providers) != 4 {
+		t.Fatalf("expected 4 providers, got %d", len(providers))
 	}
 
 	hasHello := false
+	hasRAG := false
 	hasUnraid := false
 	hasUnifi := false
 
 	for _, p := range providers {
 		if p.Name() == "hello" {
 			hasHello = true
+		} else if p.Name() == "homelab-context" {
+			hasRAG = true
 		} else if len(p.Name()) >= 6 && p.Name()[:6] == "Unraid" {
 			hasUnraid = true
 		} else if p.Name() == "UniFi" {
@@ -109,6 +125,9 @@ func TestSetupServer_ProvidersAdded(t *testing.T) {
 
 	if !hasHello {
 		t.Error("expected hello provider to be registered")
+	}
+	if !hasRAG {
+		t.Error("expected homelab-context provider to be registered")
 	}
 	if !hasUnraid {
 		t.Error("expected Unraid provider to be registered")

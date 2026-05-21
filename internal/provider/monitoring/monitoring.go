@@ -1,0 +1,215 @@
+package monitoring
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"time"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+)
+
+type Provider struct {
+	prometheusURL string
+	lokiURL       string
+	httpClient    *http.Client
+}
+
+func NewProvider() *Provider {
+	promURL := os.Getenv("PROMETHEUS_URL")
+	if promURL == "" {
+		promURL = "http://localhost:9090"
+	}
+	lokiURL := os.Getenv("LOKI_URL")
+	if lokiURL == "" {
+		lokiURL = "http://localhost:3100"
+	}
+
+	return &Provider{
+		prometheusURL: promURL,
+		lokiURL:       lokiURL,
+		httpClient: &http.Client{
+			Timeout: 10 * time.Second,
+		},
+	}
+}
+
+func (p *Provider) Name() string {
+	return "monitoring"
+}
+
+func (p *Provider) GetResources() ([]mcp.Resource, error) {
+	return []mcp.Resource{}, nil
+}
+
+func (p *Provider) GetResourceContent(uri string) (string, error) {
+	return "", fmt.Errorf("resource not found: %s", uri)
+}
+
+func (p *Provider) GetResourceTemplates() ([]mcp.ResourceTemplate, error) {
+	return []mcp.ResourceTemplate{}, nil
+}
+
+func (p *Provider) GetPrompts() ([]mcp.Prompt, error) {
+	return []mcp.Prompt{}, nil
+}
+
+func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
+	return nil, fmt.Errorf("prompt not found: %s", name)
+}
+
+func (p *Provider) GetTools() ([]mcp.Tool, error) {
+	return []mcp.Tool{
+		{
+			Name:        "query_promql",
+			Description: "Execute a PromQL query against Prometheus to retrieve metrics.",
+			InputSchema: mcp.ToolInputSchema{
+				Type: "object",
+				Properties: map[string]interface{}{
+					"query": map[string]interface{}{
+						"type":        "string",
+						"description": "The PromQL query string",
+					},
+				},
+				Required: []string{"query"},
+			},
+		},
+		{
+			Name:        "query_logql",
+			Description: "Execute a LogQL query against Loki to retrieve logs.",
+			InputSchema: mcp.ToolInputSchema{
+				Type: "object",
+				Properties: map[string]interface{}{
+					"query": map[string]interface{}{
+						"type":        "string",
+						"description": "The LogQL query string",
+					},
+				},
+				Required: []string{"query"},
+			},
+		},
+	}, nil
+}
+
+func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+	switch name {
+	case "query_promql":
+		query, ok := arguments["query"].(string)
+		if !ok {
+			return mcp.NewToolResultError("query must be a string"), nil
+		}
+		res, err := p.executePrometheusQuery(query)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Prometheus query failed: %v", err)), nil
+		}
+		return mcp.NewToolResultText(res), nil
+
+	case "query_logql":
+		query, ok := arguments["query"].(string)
+		if !ok {
+			return mcp.NewToolResultError("query must be a string"), nil
+		}
+		res, err := p.executeLokiQuery(query)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Loki query failed: %v", err)), nil
+		}
+		return mcp.NewToolResultText(res), nil
+	}
+
+	return nil, fmt.Errorf("tool not found: %s", name)
+}
+
+func (p *Provider) executePrometheusQuery(query string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	u, err := url.Parse(fmt.Sprintf("%s/api/v1/query", p.prometheusURL))
+	if err != nil {
+		return "", err
+	}
+	q := u.Query()
+	q.Set("query", query)
+	u.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", err
+	}
+
+	// Just return JSON formatted string.
+	out, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(out), nil
+}
+
+func (p *Provider) executeLokiQuery(query string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	u, err := url.Parse(fmt.Sprintf("%s/loki/api/v1/query", p.lokiURL))
+	if err != nil {
+		return "", err
+	}
+	q := u.Query()
+	q.Set("query", query)
+	u.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", err
+	}
+
+	out, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(out), nil
+}

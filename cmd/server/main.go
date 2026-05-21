@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"homelab-mcp/internal/mcp"
+	ragcontext "homelab-mcp/internal/provider/context"
 	"homelab-mcp/internal/provider/hello"
 	"homelab-mcp/internal/provider/lidarr"
+	"homelab-mcp/internal/provider/monitoring"
 	"homelab-mcp/internal/provider/nzbget"
 	"homelab-mcp/internal/provider/plex"
 	"homelab-mcp/internal/provider/radarr"
@@ -23,6 +25,15 @@ func setupServer() *mcp.Server {
 
 	// Add providers
 	s.AddProvider(&hello.HelloProvider{})
+
+	// Add Monitoring Provider
+	s.AddProvider(monitoring.NewProvider())
+	slog.Info("Monitoring provider added")
+
+	// Add RAG context Provider
+	contextURL := os.Getenv("HOMELAB_CONTEXT_URL")
+	s.AddProvider(ragcontext.NewProvider(contextURL))
+	slog.Info("RAG context provider added", "url", contextURL)
 
 	// Scan environment variables for UNRAID_*_URL
 	unraidConfigsFound := false
