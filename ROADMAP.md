@@ -50,3 +50,4 @@ This document tracks the iterative goals and completed phases of the project. Fo
 ## Phase 4: Telemetry & Memory Context (Complete)
 - [x] **Deep Metrics**: Implement `monitoring` provider to execute PromQL/LogQL against the new Prometheus/Loki stack.
 - [x] **RAG Context**: Implement `context` provider to fetch embedded architecture/golden-path documentation from Qdrant.
+- [x] **Alerting**: Implement `alerting` provider to securely dispatch asynchronous push notifications via `ntfy.sh`.
