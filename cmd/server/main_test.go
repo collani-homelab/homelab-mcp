@@ -60,10 +60,10 @@ func TestSetupServer_ProvidersSkipped(t *testing.T) {
 	s := setupServer()
 	providers := s.Providers()
 
-	// Expecting Hello and RAG context providers since other URLs are omitted
-	if len(providers) != 2 {
-		t.Fatalf("expected 2 providers, got %d", len(providers))
-	}
+	        // Expecting Hello, Monitoring, Alerting, and RAG context providers since other URLs are omitted
+        if len(providers) != 4 {
+                t.Fatalf("expected 4 providers, got %d", len(providers))
+        }
 
 	hasHello := false
 	hasRAG := false
@@ -101,10 +101,10 @@ func TestSetupServer_ProvidersAdded(t *testing.T) {
 	s := setupServer()
 	providers := s.Providers()
 
-	// Expecting Hello, RAG context, Unraid, and UniFi providers
-	if len(providers) != 4 {
-		t.Fatalf("expected 4 providers, got %d", len(providers))
-	}
+	        // Expecting Hello, RAG context, Monitoring, Alerting, Unraid, and UniFi providers
+        if len(providers) != 6 {
+                t.Fatalf("expected 6 providers, got %d", len(providers))
+        }
 
 	hasHello := false
 	hasRAG := false

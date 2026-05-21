@@ -45,4 +45,8 @@ This document tracks the iterative goals and completed phases of the project. Fo
 - [x] **CI/CD**: Implemented `ci.yml` and `platform.json` for integration with the new `homelab-platform` "Golden Path".
   - [x] Add docker registry to the SRE machine configuration and update `homelab-mcp` to use the new local registry.
   - [ ] Verify the new CI/CD pipeline.
-- [ ] **Deployment**: Setup Self-Hosted Runner and Local Registry on Unraid to serve the latest `main` branch.
+- [x] **Deployment**: Setup Self-Hosted Runner and Local Registry on Unraid to serve the latest `main` branch.
+
+## Phase 4: Telemetry & Memory Context (Complete)
+- [x] **Deep Metrics**: Implement `monitoring` provider to execute PromQL/LogQL against the new Prometheus/Loki stack.
+- [x] **RAG Context**: Implement `context` provider to fetch embedded architecture/golden-path documentation from Qdrant.

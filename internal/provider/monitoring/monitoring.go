@@ -67,29 +67,29 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 		{
 			Name:        "query_promql",
 			Description: "Execute a PromQL query against Prometheus to retrieve metrics.",
-			InputSchema: mcp.ToolInputSchema{
-				Type: "object",
-				Properties: map[string]interface{}{
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
 					"query": map[string]interface{}{
 						"type":        "string",
 						"description": "The PromQL query string",
 					},
 				},
-				Required: []string{"query"},
+				"required": []string{"query"},
 			},
 		},
 		{
 			Name:        "query_logql",
 			Description: "Execute a LogQL query against Loki to retrieve logs.",
-			InputSchema: mcp.ToolInputSchema{
-				Type: "object",
-				Properties: map[string]interface{}{
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
 					"query": map[string]interface{}{
 						"type":        "string",
 						"description": "The LogQL query string",
 					},
 				},
-				Required: []string{"query"},
+				"required": []string{"query"},
 			},
 		},
 	}, nil
@@ -100,24 +100,24 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 	case "query_promql":
 		query, ok := arguments["query"].(string)
 		if !ok {
-			return mcp.NewToolResultError("query must be a string"), nil
+			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: "query must be a string"}}}, nil
 		}
 		res, err := p.executePrometheusQuery(query)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Prometheus query failed: %v", err)), nil
+			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Prometheus query failed: %v", err)}}}, nil
 		}
-		return mcp.NewToolResultText(res), nil
+		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: res}}}, nil
 
 	case "query_logql":
 		query, ok := arguments["query"].(string)
 		if !ok {
-			return mcp.NewToolResultError("query must be a string"), nil
+			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: "query must be a string"}}}, nil
 		}
 		res, err := p.executeLokiQuery(query)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Loki query failed: %v", err)), nil
+			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Loki query failed: %v", err)}}}, nil
 		}
-		return mcp.NewToolResultText(res), nil
+		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: res}}}, nil
 	}
 
 	return nil, fmt.Errorf("tool not found: %s", name)

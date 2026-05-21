@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"homelab-mcp/internal/mcp"
+	"homelab-mcp/internal/provider/alerting"
 	ragcontext "homelab-mcp/internal/provider/context"
 	"homelab-mcp/internal/provider/hello"
 	"homelab-mcp/internal/provider/lidarr"
@@ -29,6 +30,10 @@ func setupServer() *mcp.Server {
 	// Add Monitoring Provider
 	s.AddProvider(monitoring.NewProvider())
 	slog.Info("Monitoring provider added")
+
+	// Add Alerting Provider
+	s.AddProvider(alerting.NewProvider())
+	slog.Info("Alerting provider added")
 
 	// Add RAG context Provider
 	contextURL := os.Getenv("HOMELAB_CONTEXT_URL")
