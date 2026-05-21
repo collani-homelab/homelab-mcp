@@ -8,5 +8,7 @@ services:
     environment:
       - PORT=8080
       - MCP_TRANSPORT=sse
+      - PROMETHEUS_URL=http://192.168.99.178:9091
+      - LOKI_URL=http://192.168.99.178:3100
     env_file:
       - .env
