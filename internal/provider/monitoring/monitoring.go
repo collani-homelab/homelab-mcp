@@ -173,7 +173,7 @@ func (p *Provider) executeLokiQuery(query string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	u, err := url.Parse(fmt.Sprintf("%s/loki/api/v1/query", p.lokiURL))
+	u, err := url.Parse(fmt.Sprintf("%s/loki/api/v1/query_range", p.lokiURL))
 	if err != nil {
 		return "", err
 	}
