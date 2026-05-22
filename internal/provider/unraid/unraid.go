@@ -92,6 +92,11 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 			Name:     fmt.Sprintf("Unraid System Notifications (%s)", p.name),
 			MIMEType: "application/json",
 		},
+		{
+			URI:      fmt.Sprintf("unraid://%s/system/syslog", p.name),
+			Name:     fmt.Sprintf("Unraid System Log (%s)", p.name),
+			MIMEType: "text/plain",
+		},
 	}, nil
 }
 
@@ -160,6 +165,7 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 	vmsURI := fmt.Sprintf("unraid://%s/vms", p.name)
 	upsURI := fmt.Sprintf("unraid://%s/system/ups", p.name)
 	notificationsURI := fmt.Sprintf("unraid://%s/notifications", p.name)
+	syslogURI := fmt.Sprintf("unraid://%s/system/syslog", p.name)
 
 	var query string
 	switch uri {
@@ -246,6 +252,12 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
       importance
       formattedTimestamp
     }
+  }
+}`
+	case syslogURI:
+		query = `query {
+  logFile(path: "/var/log/syslog") {
+    content
   }
 }`
 	default:
