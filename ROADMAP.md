@@ -51,3 +51,14 @@ This document tracks the iterative goals and completed phases of the project. Fo
 - [x] **Deep Metrics**: Implement `monitoring` provider to execute PromQL/LogQL against the new Prometheus/Loki stack.
 - [x] **RAG Context**: Implement `context` provider to fetch embedded architecture/golden-path documentation from Qdrant.
 - [x] **Alerting**: Implement `alerting` provider to securely dispatch asynchronous push notifications via `ntfy.sh`.
+
+## Phase 5: Client Compatibility & Interoperability (Next)
+
+### Goals
+- Ensure the MCP server features are fully usable across all major LLM frontends (e.g., Open WebUI, LibreChat), regardless of their client-side protocol implementation gaps.
+
+### Roadmap
+- [ ] **Prompt-to-Tool Mapping**: Implement a dynamic mapping layer in `internal/mcp/server.go` to expose all defined MCP Prompts (both global and provider-specific) as standard MCP Tools.
+  - [ ] Intercept tool execution to invoke the underlying prompt handler.
+  - [ ] Automatically translate prompt arguments into standard JSON schemas.
+  - [ ] Validate implementation using Open WebUI integration.
