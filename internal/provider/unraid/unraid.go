@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"homelab-mcp/internal/provider"
 )
 
 type Provider struct {
@@ -384,9 +385,204 @@ func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.Get
 }
 
 func (p *Provider) GetTools() ([]mcp.Tool, error) {
-	return []mcp.Tool{}, nil
+	return []mcp.Tool{
+		{
+			Name:        fmt.Sprintf("get_unraid_system_stats_%s", p.name),
+			Description: fmt.Sprintf("Retrieves CPU, memory, server info, and OS details for the Unraid server '%s'.", p.name),
+			InputSchema: map[string]interface{}{
+				"type":       "object",
+				"properties": map[string]interface{}{},
+			},
+		},
+		{
+			Name:        fmt.Sprintf("get_unraid_array_status_%s", p.name),
+			Description: fmt.Sprintf("Retrieves array state, parity check status, and disk inventory for the Unraid server '%s'.", p.name),
+			InputSchema: map[string]interface{}{
+				"type":       "object",
+				"properties": map[string]interface{}{},
+			},
+		},
+		{
+			Name:        fmt.Sprintf("get_unraid_containers_%s", p.name),
+			Description: fmt.Sprintf("Retrieves docker container list including status, autostart, LAN port mappings, log size, and updates for the Unraid server '%s'.", p.name),
+			InputSchema: map[string]interface{}{
+				"type":       "object",
+				"properties": map[string]interface{}{},
+			},
+		},
+		{
+			Name:        fmt.Sprintf("get_unraid_ups_status_%s", p.name),
+			Description: fmt.Sprintf("Retrieves UPS status, charge, runtime, and load details for the Unraid server '%s'. Graces gracefully on communication errors.", p.name),
+			InputSchema: map[string]interface{}{
+				"type":       "object",
+				"properties": map[string]interface{}{},
+			},
+		},
+	}, nil
 }
 
 func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+	systemStatsToolName := fmt.Sprintf("get_unraid_system_stats_%s", p.name)
+	arrayStatusToolName := fmt.Sprintf("get_unraid_array_status_%s", p.name)
+	containersToolName := fmt.Sprintf("get_unraid_containers_%s", p.name)
+	upsStatusToolName := fmt.Sprintf("get_unraid_ups_status_%s", p.name)
+
+	pruneKeys := []string{"_id", "site_id", "oui", "fingerprint"}
+
+	switch name {
+	case systemStatsToolName:
+		query := `query {
+  metrics {
+    cpu {
+      percentTotal
+    }
+    memory {
+      total
+      used
+      free
+      percentTotal
+    }
+  }
+  info {
+    system {
+      manufacturer
+      model
+    }
+    os {
+      distro
+      release
+      uptime
+    }
+  }
+}`
+		dataBytes, err := p.queryGraphQL(query)
+		if err != nil {
+			return &mcp.CallToolResult{
+				IsError: true,
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: fmt.Sprintf("Failed to fetch system stats: %v", err)},
+				},
+			}, nil
+		}
+		pruned, err := provider.PruneJSON(dataBytes, pruneKeys)
+		if err == nil {
+			dataBytes = pruned
+		}
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: string(dataBytes)},
+			},
+		}, nil
+
+	case arrayStatusToolName:
+		query := `query {
+  array {
+    state
+    parityCheckStatus {
+      status
+      progress
+      speed
+      duration
+    }
+    disks {
+      name
+      size
+      status
+      temp
+      numErrors
+      isSpinning
+    }
+  }
+}`
+		dataBytes, err := p.queryGraphQL(query)
+		if err != nil {
+			return &mcp.CallToolResult{
+				IsError: true,
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: fmt.Sprintf("Failed to fetch array status: %v", err)},
+				},
+			}, nil
+		}
+		pruned, err := provider.PruneJSON(dataBytes, pruneKeys)
+		if err == nil {
+			dataBytes = pruned
+		}
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: string(dataBytes)},
+			},
+		}, nil
+
+	case containersToolName:
+		query := `query {
+  docker {
+    containers {
+      names
+      image
+      state
+      status
+      autoStart
+      lanIpPorts
+      sizeLog
+      isUpdateAvailable
+    }
+  }
+}`
+		dataBytes, err := p.queryGraphQL(query)
+		if err != nil {
+			return &mcp.CallToolResult{
+				IsError: true,
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: fmt.Sprintf("Failed to fetch docker containers: %v", err)},
+				},
+			}, nil
+		}
+		pruned, err := provider.PruneJSON(dataBytes, pruneKeys)
+		if err == nil {
+			dataBytes = pruned
+		}
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: string(dataBytes)},
+			},
+		}, nil
+
+	case upsStatusToolName:
+		query := `query {
+  upsDevices {
+    name
+    status
+    battery {
+      chargeLevel
+      estimatedRuntime
+      health
+    }
+    power {
+      inputVoltage
+      loadPercentage
+      currentPower
+    }
+  }
+}`
+		dataBytes, err := p.queryGraphQL(query)
+		if err != nil {
+			// Return a graceful JSON error message instead of protocol-level error
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: fmt.Sprintf("{\"error\": \"UPS status unavailable: %v\"}", err)},
+				},
+			}, nil
+		}
+		pruned, err := provider.PruneJSON(dataBytes, pruneKeys)
+		if err == nil {
+			dataBytes = pruned
+		}
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: string(dataBytes)},
+			},
+		}, nil
+	}
+
 	return nil, fmt.Errorf("tool not found: %s", name)
 }

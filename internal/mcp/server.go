@@ -193,9 +193,9 @@ Summarize into three sections: 1) What's streaming right now, 2) What's download
 			port = "8080"
 		}
 		
-		mcpHandler := mcp.NewStreamableHTTPHandler(func(req *http.Request) *mcp.Server {
+		mcpHandler := mcp.NewSSEHandler(func(req *http.Request) *mcp.Server {
 			return s.mcpServer
-		}, &mcp.StreamableHTTPOptions{
+		}, &mcp.SSEOptions{
 			DisableLocalhostProtection: true,
 		})
 		

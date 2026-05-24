@@ -1,6 +1,6 @@
 services:
   homelab-mcp:
-    image: 192.168.99.178:5000/homelab-mcp:latest
+    image: 192.168.99.178:5000/homelab-mcp:v2
     container_name: homelab-mcp
     restart: unless-stopped
     ports:

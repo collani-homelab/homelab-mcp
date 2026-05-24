@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func TestNewProvider(t *testing.T) {
@@ -51,8 +53,8 @@ func TestProvider_GetResources(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if len(resources) != 6 {
-		t.Fatalf("expected 6 resource, got %d", len(resources))
+	if len(resources) != 7 {
+		t.Fatalf("expected 7 resource, got %d", len(resources))
 	}
 	expectedURI := "unraid://test-server/containers"
 	if resources[0].URI != expectedURI {
@@ -217,5 +219,100 @@ func TestProvider_GetResourceContent_ContainerLogs(t *testing.T) {
 
 	if requestCount != 2 {
 		t.Errorf("expected 2 requests, got %d", requestCount)
+	}
+}
+
+func TestProvider_Tools(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var reqBody map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+			t.Errorf("failed to decode request body: %v", err)
+		}
+		
+		query, _ := reqBody["query"].(string)
+		w.WriteHeader(http.StatusOK)
+
+		if strings.Contains(query, "metrics") {
+			_, _ = w.Write([]byte(`{"data": {"metrics": {"cpu": {"percentTotal": 5.2}}}}`))
+		} else if strings.Contains(query, "array") {
+			_, _ = w.Write([]byte(`{"data": {"array": {"state": "STARTED"}}}`))
+		} else if strings.Contains(query, "docker") {
+			_, _ = w.Write([]byte(`{"data": {"docker": {"containers": []}}}`))
+		} else if strings.Contains(query, "upsDevices") {
+			if r.URL.Path == "/fail_ups" {
+				// Trigger an error
+				_, _ = w.Write([]byte(`{"errors": [{"message": "No UPS data returned from apcaccess"}]}`))
+			} else {
+				_, _ = w.Write([]byte(`{"data": {"upsDevices": [{"name": "APC UPS"}]}}`))
+			}
+		} else {
+			t.Errorf("unexpected query: %s", query)
+		}
+	}))
+	defer ts.Close()
+
+	p, _ := NewProvider("test-server", ts.URL, "", false)
+
+	// Test GetTools
+	tools, err := p.GetTools()
+	if err != nil {
+		t.Fatalf("GetTools error: %v", err)
+	}
+	if len(tools) != 4 {
+		t.Errorf("expected 4 tools, got %d", len(tools))
+	}
+
+	// Test CallTool - System Stats
+	res, err := p.CallTool("get_unraid_system_stats_test-server", nil)
+	if err != nil {
+		t.Fatalf("CallTool system stats failed: %v", err)
+	}
+	if res.IsError {
+		t.Errorf("system stats returned error: %s", res.Content[0].(*mcp.TextContent).Text)
+	}
+
+	// Test CallTool - Array Status
+	res, err = p.CallTool("get_unraid_array_status_test-server", nil)
+	if err != nil {
+		t.Fatalf("CallTool array status failed: %v", err)
+	}
+	if res.IsError {
+		t.Errorf("array status returned error: %s", res.Content[0].(*mcp.TextContent).Text)
+	}
+
+	// Test CallTool - Containers
+	res, err = p.CallTool("get_unraid_containers_test-server", nil)
+	if err != nil {
+		t.Fatalf("CallTool containers failed: %v", err)
+	}
+	if res.IsError {
+		t.Errorf("containers returned error: %s", res.Content[0].(*mcp.TextContent).Text)
+	}
+
+	// Test CallTool - UPS Status (Success)
+	res, err = p.CallTool("get_unraid_ups_status_test-server", nil)
+	if err != nil {
+		t.Fatalf("CallTool ups status failed: %v", err)
+	}
+	if res.IsError {
+		t.Errorf("ups status returned error: %s", res.Content[0].(*mcp.TextContent).Text)
+	}
+	if !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "upsDevices") {
+		t.Errorf("expected upsDevices in response, got: %s", res.Content[0].(*mcp.TextContent).Text)
+	}
+
+	// Test CallTool - UPS Status (Graceful Error Handled)
+	// We can use a different provider instance pointing to a server that triggers errors
+	pError, _ := NewProvider("fail_ups", ts.URL+"/fail_ups", "", false)
+	res, err = pError.CallTool("get_unraid_ups_status_fail_ups", nil)
+	if err != nil {
+		t.Fatalf("CallTool ups status error test failed: %v", err)
+	}
+	if res.IsError {
+		t.Errorf("ups status error call should be handled gracefully (IsError=false), but got IsError=true")
+	}
+	txt := res.Content[0].(*mcp.TextContent).Text
+	if !strings.Contains(txt, "error") || !strings.Contains(txt, "No UPS data returned from apcaccess") {
+		t.Errorf("expected graceful JSON error message, got: %s", txt)
 	}
 }

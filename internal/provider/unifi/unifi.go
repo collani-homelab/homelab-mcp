@@ -101,7 +101,16 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 	return p.fetchFromUniFi(apiPath)
 }
 
+// defaultDevicePruneKeys are noisy fields stripped from stat/device responses.
+var defaultDevicePruneKeys = []string{
+	"_id", "site_id", "oui", "fingerprint", "_is_guest_by_uap", "tx_bytes-r", "rx_bytes-r",
+}
+
 func (p *Provider) fetchFromUniFi(apiPath string) (string, error) {
+	return p.fetchFromUniFiPruned(apiPath, defaultDevicePruneKeys)
+}
+
+func (p *Provider) fetchFromUniFiPruned(apiPath string, pruneKeys []string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -120,7 +129,7 @@ func (p *Provider) fetchFromUniFi(apiPath string) (string, error) {
 		}
 	}
 
-	pruned, err := provider.PruneJSON([]byte(content), []string{"_id", "site_id", "oui", "fingerprint", "_is_guest_by_uap", "tx_bytes-r", "rx_bytes-r"})
+	pruned, err := provider.PruneJSON([]byte(content), pruneKeys)
 	if err == nil {
 		return string(pruned), nil
 	}
@@ -193,9 +202,63 @@ func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.Get
 }
 
 func (p *Provider) GetTools() ([]mcp.Tool, error) {
-	return []mcp.Tool{}, nil
+	return []mcp.Tool{
+		{
+			Name:        "get_unifi_devices",
+			Description: "Retrieves a pruned list of UniFi infrastructure devices (APs, switches, gateways) from the network controller.",
+			InputSchema: map[string]interface{}{
+				"type":       "object",
+				"properties": map[string]interface{}{},
+			},
+		},
+		{
+			Name:        "get_unifi_clients",
+			Description: "Retrieves a pruned list of active client devices (stations) connected to the UniFi network, including hostname, IP, MAC, VLAN, uplink AP/switch, signal strength, and satisfaction score.",
+			InputSchema: map[string]interface{}{
+				"type":       "object",
+				"properties": map[string]interface{}{},
+			},
+		},
+	}, nil
 }
 
 func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+	switch name {
+	case "get_unifi_devices":
+		content, err := p.fetchFromUniFi("stat/device")
+		if err != nil {
+			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Failed to fetch unifi devices: %v", err)}}}, nil
+		}
+		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: content}}}, nil
+
+	case "get_unifi_clients":
+		content, err := p.fetchFromUniFiPruned("stat/sta", []string{
+			// Internal IDs and tracking noise
+			"_id", "site_id", "user_id", "usergroup_id",
+			"network_id", "last_connection_network_id",
+			"network_members_group_ids",
+			// Fingerprint noise
+			"oui", "fingerprint", "fingerprint_engine_version", "fingerprint_source",
+			"dev_family", "dev_cat", "dev_id", "dev_vendor", "os_name", "confidence",
+			// Internal per-device seen/uptime tracking
+			"_uptime_by_ugw", "_uptime_by_usw", "_uptime_by_uap",
+			"_last_seen_by_ugw", "_last_seen_by_usw", "_last_seen_by_uap",
+			"_is_guest_by_ugw", "_is_guest_by_usw", "_is_guest_by_uap",
+			"_last_reachable_by_gw",
+			// High-frequency byte counters (available via Prometheus instead)
+			"tx_bytes", "rx_bytes", "tx_packets", "rx_packets",
+			"tx_bytes-r", "rx_bytes-r",
+			"wired-tx_bytes", "wired-rx_bytes",
+			"wired-tx_packets", "wired-rx_packets",
+			"wifi_tx_attempts", "wifi_tx_dropped", "wifi_tx_retries_percentage",
+			// Misc noise
+			"eagerly_discovered", "qos_policy_applied", "last_1x_identity",
+			"satisfaction_avg", "anomalies",
+		})
+		if err != nil {
+			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Failed to fetch unifi clients: %v", err)}}}, nil
+		}
+		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: content}}}, nil
+	}
 	return nil, fmt.Errorf("tool not found: %s", name)
 }
