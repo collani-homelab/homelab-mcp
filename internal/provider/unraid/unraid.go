@@ -487,6 +487,8 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
     disks {
       name
       size
+      fsSize
+      fsFree
       status
       temp
       numErrors
