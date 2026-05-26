@@ -6,8 +6,8 @@ A Model Context Protocol (MCP) server written in Go to provide AI assistants wit
 
 We are currently working on **Phase 3** (Media Stack Expansion & Continuous Deployment). 
 
-* For detailed task tracking and historical progress, see [Design/Roadmap.md](Design/Roadmap.md).
-* For high-level design decisions and codebase structure, see [Design/Architecture.md](Design/Architecture.md).
+* For detailed task tracking and historical progress, see [ROADMAP.md](ROADMAP.md).
+* For high-level design decisions and codebase structure, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Capabilities
 
@@ -15,6 +15,7 @@ We are currently working on **Phase 3** (Media Stack Expansion & Continuous Depl
 - `unraid://{name}/containers` - Docker containers list and status.
 - `unraid://{name}/system/stats` - Server uptime and memory stats.
 - `unraid://{name}/array/status` - Parity disk status and array health.
+- `unraid://{name}/system/ups` - UPS battery runtime and power load telemetry.
 - `unifi://clients` - Active network clients.
 - `unifi://devices` - UniFi network infrastructure devices.
 - `unifi://network/health` - High-level ISP and network health.
