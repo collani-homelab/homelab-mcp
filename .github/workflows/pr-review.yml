@@ -3,6 +3,7 @@ name: PR Review
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened]
 
 permissions:
   pull-requests: write
@@ -11,28 +12,36 @@ permissions:
 jobs:
   review:
     name: review
+    concurrency:
+      group: pr-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    if: github.event.pull_request.user.login == 'wcollani'
     runs-on: [self-hosted, sre]
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Check for Claude Code
+        run: |
+          if ! command -v claude &>/dev/null; then
+            echo "Claude CLI not found, exiting review......"
+            exit 1
+          fi
+
       - name: Code Review
         continue-on-error: true
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          claude --skip-permissions -p "/code-review --comment"
+          claude --dangerously-skip-permissions -p "/code-review --comment"
 
       - name: Security Review
         continue-on-error: true
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          claude --skip-permissions -p "/security-review --comment"
+          claude --dangerously-skip-permissions -p "/security-review --comment"
 
       - name: Notify
         if: always()
@@ -42,10 +51,15 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_ACTION: ${{ github.event.action }}
         run: |
+          action=$PR_ACTION
+          case "$action" in
+            synchronize) action="updated" ;;
+            reopened)    action="reopened" ;;
+          esac
           curl -s \
-            -H "Title: PR ready: $PR_REPO #$PR_NUM" \
+            -H "Title: PR $action: $PR_REPO #$PR_NUM" \
             -H "Tags: github,pr" \
-            -d "$PR_AUTHOR opened #$PR_NUM: $PR_TITLE
-$PR_URL" \
+            -d "$PR_AUTHOR $PR_ACTION #$PR_NUM: $PR_TITLE $PR_URL" \
             http://localhost:9099/homelab_alerts

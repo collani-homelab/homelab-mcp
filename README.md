@@ -167,3 +167,6 @@ PROMETHEUS_URL=http://host:9090
 LOKI_URL=http://host:3100
 HOMELAB_CONTEXT_URL=http://host:8081
 ```
+
+### Meaningless section to trigger CI
+Hello
