@@ -169,4 +169,4 @@ HOMELAB_CONTEXT_URL=http://host:8081
 ```
 
 ### Meaningless section to trigger CI
-Hell world
+Hello
