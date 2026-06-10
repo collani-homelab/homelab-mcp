@@ -87,7 +87,22 @@ The production instance runs as a Docker container on the SRE machine:
 - **Image:** `192.168.99.178:5000/homelab-mcp:v2` (local registry)
 - **Port:** 8083 on host → 8080 in container
 - **Compose file:** `docker-compose.yml` (server copy at `/home/wcollani/repos/homelab-mcp/`)
-- **CI/CD:** GitHub Actions → local registry → `docker compose up -d` via `homelab-platform` Golden Path
+- **CI/CD:** GitHub Actions (`deploy.yml`) → `mise run docker-build && docker-push` → `homelab-deploy -deploy homelab-mcp`
+
+## 9. PR Workflow
+
+All changes reach `main` via PR. Three workflow files implement the full loop:
+
+| File | Trigger | Runner | Purpose |
+|------|---------|--------|---------|
+| `ci.yml` | `pull_request`, `push` to `main` | `ubuntu-latest` | Tests + lint — required status check |
+| `pr-review.yml` | `pull_request` to `main` | `[self-hosted, sre]` | Claude code-review + security-review (advisory) + ntfy notify |
+| `deploy.yml` | `push` to `main` | `[self-hosted, sre]` | Docker build → local registry → `homelab-deploy -deploy homelab-mcp` |
+
+The `review` job in `pr-review.yml` is gated to `wcollani`-authored PRs only. Both review steps use `continue-on-error: true`; the notify step fires via `if: always()`.
+
+> Full spec, security risk notes, runner label table, and LiteLLM swap instructions:
+> **[homelab-platform/ARCHITECTURE.md §6 — PR Workflow Golden Path](../homelab-platform/ARCHITECTURE.md#6-pr-workflow-golden-path)**
 
 ## 8. Testing
 
