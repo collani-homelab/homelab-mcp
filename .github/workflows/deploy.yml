@@ -23,6 +23,7 @@ jobs:
 
       - name: Deploy Service
         run: |
-          cd ~/homelab-platform
+          cd ~/repos/homelab-platform
+          git pull
           mise run build
           ./homelab-deploy -deploy homelab-mcp -repo .
