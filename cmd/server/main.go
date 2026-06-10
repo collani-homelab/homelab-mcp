@@ -6,6 +6,7 @@ import (
 	"homelab-mcp/internal/mcp"
 	"homelab-mcp/internal/provider/alerting"
 	ragcontext "homelab-mcp/internal/provider/context"
+	"homelab-mcp/internal/provider/deploy"
 	"homelab-mcp/internal/provider/hello"
 	"homelab-mcp/internal/provider/lidarr"
 	"homelab-mcp/internal/provider/monitoring"
@@ -39,6 +40,11 @@ func setupServer() *mcp.Server {
 	contextURL := os.Getenv("HOMELAB_CONTEXT_URL")
 	s.AddProvider(ragcontext.NewProvider(contextURL))
 	slog.Info("RAG context provider added", "url", contextURL)
+
+	// Add Deploy Provider
+	deployWebhookURL := os.Getenv("DEPLOY_WEBHOOK_URL")
+	s.AddProvider(deploy.NewProvider(deployWebhookURL))
+	slog.Info("Deploy provider added", "webhook_url", deployWebhookURL)
 
 	// Scan environment variables for UNRAID_*_URL
 	unraidConfigsFound := false

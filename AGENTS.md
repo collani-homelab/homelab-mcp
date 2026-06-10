@@ -34,13 +34,15 @@ This repository is the Model Context Protocol (MCP) server for the homelab. It e
 | Monitoring | `provider/monitoring` | Prometheus (PromQL) + Loki (LogQL) |
 | Context (RAG) | `provider/context` | homelab-context service (Qdrant) via `HOMELAB_CONTEXT_URL` |
 | Alerting | `provider/alerting` | ntfy.sh |
+| Deploy | `provider/deploy` | homelab-deploy webhook at `DEPLOY_WEBHOOK_URL` (port 8084) |
 
 ## 4. Platform & Deployment (The Golden Path)
 
 - **`platform.json`:** Service metadata consumed by `homelab-platform` for automated deployment.
-- **CI/CD:** GitHub Actions workflows build and push the Docker image to the local private registry.
+- **CI/CD:** Push to `main` → GitHub Actions self-hosted runner on the SRE machine → `mise run docker-build` → `mise run docker-push` → `homelab-deploy -deploy homelab-mcp`. No manual steps needed.
 - **Secrets:** Bound via `.env` on the host. Never committed.
-- **Compose file:** `docker-compose.yml` in the repo root. The server-side copy lives at `/home/wcollani/repos/homelab-mcp/docker-compose.yml` on the SRE machine.
+- **Compose file:** `docker-compose.yml` in the repo root. The SRE machine's copy is updated automatically via `git pull` on service restart (defined in `sre-machine.json`).
+- **Agents must not do manual deploy flows.** Make changes, commit, push — the pipeline owns the deploy. Use `redeploy_service` only for force-restarts without a code change.
 
 ## 5. Using the MCP Server from Claude Code
 
@@ -50,7 +52,22 @@ When exercising the homelab-mcp server from a Claude Code session:
 - **Parallel batches of 13+ are safe once warm.** The go-sdk SSE server handles high concurrency fine. The failure mode is a client-side timing issue, not a server concurrency limit. Confirmed via controlled escalation testing (1→2→4→6→8→10→13 simultaneous calls).
 - **Use system stats as the warmup call.** `get_unraid_system_stats_dionysus` is fast and has no side effects — ideal for confirming the session is live.
 
-## 6. Current State
+## 6. Triggering Redeploys
+
+The `redeploy_service` tool (Deploy provider) allows agents to restart any service defined in `sre-machine.json` without SSH access or a code push.
+
+```
+redeploy_service(service_name="homelab-mcp")
+```
+
+This calls the deploy webhook at `DEPLOY_WEBHOOK_URL/deploy/<service>`, which runs `homelab-deploy -deploy <service>` on the SRE machine. Use it when:
+- A config file was changed but no code changed
+- A service crashed and needs a forced restart
+- A new image was manually pushed to the registry outside of CI/CD
+
+**The deploy webhook must be running** on the SRE machine (systemd service `homelab-deploy-webhook`, port 8084). If `DEPLOY_WEBHOOK_URL` is not set, the tool returns a clear error rather than silently failing.
+
+## 7. Current State
 
 All planned phases are complete (see `ROADMAP.md`). The server is stable and in maintenance/expansion mode. New work should be incremental provider additions or tool improvements, not architectural changes.
 
