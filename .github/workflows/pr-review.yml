@@ -46,6 +46,5 @@ jobs:
           curl -s \
             -H "Title: PR ready: $PR_REPO #$PR_NUM" \
             -H "Tags: github,pr" \
-            -d "$PR_AUTHOR opened #$PR_NUM: $PR_TITLE
-$PR_URL" \
+            -d "$PR_AUTHOR opened #$PR_NUM: $PR_TITLE $PR_URL" \
             http://localhost:9099/homelab_alerts
