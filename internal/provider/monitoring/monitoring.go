@@ -88,6 +88,10 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 						"type":        "string",
 						"description": "The LogQL query string",
 					},
+					"lookback": map[string]interface{}{
+						"type":        "string",
+						"description": "How far back to look for logs, as a Prometheus duration string (e.g. '1h', '30m', '24h'). Defaults to '1h'.",
+					},
 				},
 				"required": []string{"query"},
 			},
@@ -113,7 +117,11 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 		if !ok {
 			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: "query must be a string"}}}, nil
 		}
-		res, err := p.executeLokiQuery(query)
+		lookback := "1h"
+		if lb, ok := arguments["lookback"].(string); ok && lb != "" {
+			lookback = lb
+		}
+		res, err := p.executeLokiQuery(query, lookback)
 		if err != nil {
 			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Loki query failed: %v", err)}}}, nil
 		}
@@ -169,7 +177,7 @@ func (p *Provider) executePrometheusQuery(query string) (string, error) {
 	return string(out), nil
 }
 
-func (p *Provider) executeLokiQuery(query string) (string, error) {
+func (p *Provider) executeLokiQuery(query, lookback string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -177,8 +185,15 @@ func (p *Provider) executeLokiQuery(query string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	now := time.Now()
+	duration, err := time.ParseDuration(lookback)
+	if err != nil {
+		duration = time.Hour
+	}
 	q := u.Query()
 	q.Set("query", query)
+	q.Set("start", fmt.Sprintf("%d", now.Add(-duration).UnixNano()))
+	q.Set("end", fmt.Sprintf("%d", now.UnixNano()))
 	u.RawQuery = q.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)

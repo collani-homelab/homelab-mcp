@@ -10,6 +10,6 @@ services:
       - MCP_TRANSPORT=sse
       - PROMETHEUS_URL=http://192.168.99.178:9091
       - LOKI_URL=http://192.168.99.178:3100
-      - CONTEXT_API_URL=http://192.168.99.178:8081
+      - HOMELAB_CONTEXT_URL=http://192.168.99.178:8081
     env_file:
       - .env
