@@ -33,7 +33,9 @@ jobs:
             exit 1
           fi
 
-      # TODO: Replace with local agents
+      # Review steps disabled pending local LLM setup.
+      # To re-enable with Anthropic API: uncomment and ensure ANTHROPIC_API_KEY secret is set.
+      # To use LiteLLM instead: see "Local LLM Review Path" in homelab-platform/ARCHITECTURE.md.
       # - name: Code Review
       #   continue-on-error: true
       #   run: |
