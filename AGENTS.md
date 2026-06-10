@@ -42,7 +42,15 @@ This repository is the Model Context Protocol (MCP) server for the homelab. It e
 - **Secrets:** Bound via `.env` on the host. Never committed.
 - **Compose file:** `docker-compose.yml` in the repo root. The server-side copy lives at `/home/wcollani/repos/homelab-mcp/docker-compose.yml` on the SRE machine.
 
-## 5. Current State
+## 5. Using the MCP Server from Claude Code
+
+When exercising the homelab-mcp server from a Claude Code session:
+
+- **Always warm the session first.** After loading tool schemas (ToolSearch) or starting a fresh session, make a single tool call before firing parallel batches. The SSE handshake may not be complete yet — firing a large batch cold causes all calls to fail with "Tool result missing due to internal error", which then disrupts the session state.
+- **Parallel batches of 13+ are safe once warm.** The go-sdk SSE server handles high concurrency fine. The failure mode is a client-side timing issue, not a server concurrency limit. Confirmed via controlled escalation testing (1→2→4→6→8→10→13 simultaneous calls).
+- **Use system stats as the warmup call.** `get_unraid_system_stats_dionysus` is fast and has no side effects — ideal for confirming the session is live.
+
+## 6. Current State
 
 All planned phases are complete (see `ROADMAP.md`). The server is stable and in maintenance/expansion mode. New work should be incremental provider additions or tool improvements, not architectural changes.
 
