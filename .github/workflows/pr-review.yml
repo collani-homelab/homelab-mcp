@@ -33,15 +33,16 @@ jobs:
             exit 1
           fi
 
-      - name: Code Review
-        continue-on-error: true
-        run: |
-          claude --dangerously-skip-permissions -p "/code-review --comment"
+      # TODO: Replace with local agents
+      # - name: Code Review
+      #   continue-on-error: true
+      #   run: |
+      #     claude --dangerously-skip-permissions -p "/code-review --comment"
 
-      - name: Security Review
-        continue-on-error: true
-        run: |
-          claude --dangerously-skip-permissions -p "/security-review --comment"
+      # - name: Security Review
+      #   continue-on-error: true
+      #   run: |
+      #     claude --dangerously-skip-permissions -p "/security-review --comment"
 
       - name: Notify
         if: always()
