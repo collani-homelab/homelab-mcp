@@ -3,6 +3,7 @@ package unifi
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -88,17 +89,80 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 	switch uri {
 	case "unifi://clients":
 		apiPath = "stat/sta"
-	case "unifi://devices", "unifi://switches/poe":
+	case "unifi://devices":
 		apiPath = "stat/device"
 	case "unifi://network/health":
 		apiPath = "stat/health"
 	case "unifi://network/alarms":
 		apiPath = "rest/alarm"
+	case "unifi://switches/poe":
+		raw, err := p.fetchFromUniFi("stat/device")
+		if err != nil {
+			return "", err
+		}
+		return filterPoEDevices(raw)
 	default:
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}
 
 	return p.fetchFromUniFi(apiPath)
+}
+
+// filterPoEDevices extracts PoE-capable switches and their per-port power data
+// from a raw stat/device response, discarding non-switch devices and non-PoE ports.
+func filterPoEDevices(raw string) (string, error) {
+	var resp struct {
+		Data []map[string]interface{} `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(raw), &resp); err != nil {
+		return raw, err
+	}
+
+	var switches []map[string]interface{}
+	for _, device := range resp.Data {
+		if devType, _ := device["type"].(string); devType != "usw" {
+			continue
+		}
+		portTable, _ := device["port_table"].([]interface{})
+		var poePorts []map[string]interface{}
+		for _, entry := range portTable {
+			port, ok := entry.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			if _, hasPoe := port["poe_mode"]; !hasPoe {
+				continue
+			}
+			poePorts = append(poePorts, map[string]interface{}{
+				"port_idx":    port["port_idx"],
+				"name":        port["name"],
+				"poe_mode":    port["poe_mode"],
+				"poe_enable":  port["poe_enable"],
+				"poe_power":   port["poe_power"],
+				"poe_voltage": port["poe_voltage"],
+				"poe_current": port["poe_current"],
+			})
+		}
+		if len(poePorts) == 0 {
+			continue
+		}
+		switches = append(switches, map[string]interface{}{
+			"name":       device["name"],
+			"mac":        device["mac"],
+			"model":      device["model"],
+			"ip":         device["ip"],
+			"port_table": poePorts,
+		})
+	}
+
+	if switches == nil {
+		switches = []map[string]interface{}{}
+	}
+	out, err := json.MarshalIndent(switches, "", "  ")
+	if err != nil {
+		return raw, err
+	}
+	return string(out), nil
 }
 
 // defaultDevicePruneKeys are noisy fields stripped from stat/device responses.

@@ -141,7 +141,7 @@ func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.Get
 				{
 					Role: "user",
 					Content: &mcp.TextContent{
-						Text: "Please check the plex://sessions resource and summarize the current streaming activity on Plex, including who is watching what.",
+						Text: "Please check the plex://sessions resource and report: (1) how many streams are active, (2) what each user is watching and on which device, and (3) the video quality and resolution of each stream.",
 					},
 				},
 			},

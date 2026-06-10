@@ -3,13 +3,16 @@ package lidarr
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	mcphelper "homelab-mcp/internal/mcp"
 	"homelab-mcp/internal/provider"
 )
 
@@ -86,10 +89,10 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}
 
-	return p.fetchFromLidarr(endpoint, uri)
+	return p.fetchFromLidarr(endpoint)
 }
 
-func (p *Provider) fetchFromLidarr(apiPath, uri string) (string, error) {
+func (p *Provider) fetchFromLidarr(apiPath string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -159,9 +162,51 @@ func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.Get
 }
 
 func (p *Provider) GetTools() ([]mcp.Tool, error) {
-	return []mcp.Tool{}, nil
+	return []mcp.Tool{
+		*mcphelper.NewTool("search_lidarr_artists", "Search the Lidarr library for tracked music artists. Returns matching artists pruned of heavy metadata. Omit the query to get the first 25 artists alphabetically.", map[string]interface{}{
+			"query": map[string]interface{}{
+				"type":        "string",
+				"description": "Case-insensitive artist name search term. Omit to list the first 25 artists.",
+			},
+		}),
+	}, nil
 }
 
 func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+	if name == "search_lidarr_artists" {
+		data, err := p.fetchFromLidarr("/api/v1/artist")
+		if err != nil {
+			return mcphelper.ErrorResult(fmt.Errorf("failed to fetch artists: %w", err)), nil
+		}
+		query, _ := arguments["query"].(string)
+		result, err := filterArtistList([]byte(data), query)
+		if err != nil {
+			return mcphelper.ErrorResult(fmt.Errorf("failed to filter artists: %w", err)), nil
+		}
+		return mcphelper.TextResult(string(result)), nil
+	}
 	return nil, fmt.Errorf("tool not found: %s", name)
+}
+
+func filterArtistList(data []byte, query string) ([]byte, error) {
+	var artists []map[string]interface{}
+	if err := json.Unmarshal(data, &artists); err != nil {
+		return data, err
+	}
+	q := strings.ToLower(query)
+	var matched []map[string]interface{}
+	for _, a := range artists {
+		name, _ := a["artistName"].(string)
+		if q != "" && !strings.Contains(strings.ToLower(name), q) {
+			continue
+		}
+		matched = append(matched, a)
+		if q == "" && len(matched) >= 25 {
+			break
+		}
+	}
+	if matched == nil {
+		matched = []map[string]interface{}{}
+	}
+	return json.MarshalIndent(matched, "", "  ")
 }

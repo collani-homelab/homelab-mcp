@@ -2,6 +2,7 @@ package ragcontext
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -160,8 +161,11 @@ func (p *Provider) queryKnowledge(query string, topK int, filterType string) (*m
 		return mcphelper.ErrorResult(fmt.Errorf("failed to marshal query request: %w", err)), nil
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	url := fmt.Sprintf("%s/query", p.baseURL)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return mcphelper.ErrorResult(fmt.Errorf("failed to create http request: %w", err)), nil
 	}
@@ -230,8 +234,11 @@ func (p *Provider) indexDocument(content, source, docType string) (*mcp.CallTool
 		return mcphelper.ErrorResult(fmt.Errorf("failed to marshal index request: %w", err)), nil
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	url := fmt.Sprintf("%s/index", p.baseURL)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return mcphelper.ErrorResult(fmt.Errorf("failed to create http request: %w", err)), nil
 	}

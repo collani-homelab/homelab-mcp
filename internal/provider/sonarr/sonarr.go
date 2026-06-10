@@ -3,13 +3,16 @@ package sonarr
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	mcphelper "homelab-mcp/internal/mcp"
 	"homelab-mcp/internal/provider"
 )
 
@@ -86,10 +89,10 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}
 
-	return p.fetchFromSonarr(endpoint, uri)
+	return p.fetchFromSonarr(endpoint)
 }
 
-func (p *Provider) fetchFromSonarr(apiPath, uri string) (string, error) {
+func (p *Provider) fetchFromSonarr(apiPath string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -159,9 +162,51 @@ func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.Get
 }
 
 func (p *Provider) GetTools() ([]mcp.Tool, error) {
-	return []mcp.Tool{}, nil
+	return []mcp.Tool{
+		*mcphelper.NewTool("search_sonarr_series", "Search the Sonarr library for tracked TV series. Returns matching series pruned of heavy metadata. Omit the query to get the first 25 series alphabetically.", map[string]interface{}{
+			"query": map[string]interface{}{
+				"type":        "string",
+				"description": "Case-insensitive title search term. Omit to list the first 25 series.",
+			},
+		}),
+	}, nil
 }
 
 func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+	if name == "search_sonarr_series" {
+		data, err := p.fetchFromSonarr("/api/v3/series")
+		if err != nil {
+			return mcphelper.ErrorResult(fmt.Errorf("failed to fetch series: %w", err)), nil
+		}
+		query, _ := arguments["query"].(string)
+		result, err := filterSeriesList([]byte(data), query)
+		if err != nil {
+			return mcphelper.ErrorResult(fmt.Errorf("failed to filter series: %w", err)), nil
+		}
+		return mcphelper.TextResult(string(result)), nil
+	}
 	return nil, fmt.Errorf("tool not found: %s", name)
+}
+
+func filterSeriesList(data []byte, query string) ([]byte, error) {
+	var series []map[string]interface{}
+	if err := json.Unmarshal(data, &series); err != nil {
+		return data, err
+	}
+	q := strings.ToLower(query)
+	var matched []map[string]interface{}
+	for _, s := range series {
+		title, _ := s["title"].(string)
+		if q != "" && !strings.Contains(strings.ToLower(title), q) {
+			continue
+		}
+		matched = append(matched, s)
+		if q == "" && len(matched) >= 25 {
+			break
+		}
+	}
+	if matched == nil {
+		matched = []map[string]interface{}{}
+	}
+	return json.MarshalIndent(matched, "", "  ")
 }

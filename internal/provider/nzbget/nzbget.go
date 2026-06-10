@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"homelab-mcp/internal/provider"
 )
 
 type Provider struct {
@@ -137,7 +138,10 @@ func (p *Provider) fetchFromNZBGet(method string) (string, error) {
 		return "", fmt.Errorf("API error: status=%d body=%s", resp.StatusCode, string(respBody))
 	}
 
-	// The response is usually a JSON object with a "result" key. We can just return it as is.
+	pruned, err := provider.PruneJSON(respBody, []string{"log", "hash", "parameters", "scriptstatuses"})
+	if err == nil {
+		return string(pruned), nil
+	}
 	return string(respBody), nil
 }
 

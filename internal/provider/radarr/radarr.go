@@ -81,20 +81,15 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 	case "radarr://system/status":
 		endpoint = "/api/v3/system/status"
 	case "radarr://movie/missing":
-		// Only fetch some missing movies to keep payload sizes reasonable
-		// Using movie endpoint but filtering could be done if the API supports it, 
-		// otherwise we can fetch missing via /api/v3/movie and pruning or similar?
-		// Actually Radarr supports /api/v3/movie?apikey=X where hasFile=false or we can just pull queue.
-		// Let's just use queue and status for now, and queue details for missing.
-		endpoint = "/api/v3/movie" // we will filter in code
+		endpoint = "/api/v3/movie?monitored=true&hasFile=false"
 	default:
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}
 
-	return p.fetchFromRadarr(endpoint, uri)
+	return p.fetchFromRadarr(endpoint)
 }
 
-func (p *Provider) fetchFromRadarr(apiPath, uri string) (string, error) {
+func (p *Provider) fetchFromRadarr(apiPath string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

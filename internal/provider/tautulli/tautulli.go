@@ -141,7 +141,7 @@ func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.Get
 				{
 					Role: "user",
 					Content: &mcp.TextContent{
-						Text: "Please check the tautulli://activity resource and summarize the current streaming activity on Plex, including who is watching what, and the stream quality/transcoding status.",
+						Text: "Please check tautulli://activity for current transcoding sessions — for each stream note whether it is direct play or being transcoded, the reason if transcoding, and the video/audio codec decisions. Then check tautulli://history to summarize what has been watched in the last 24 hours.",
 					},
 				},
 			},

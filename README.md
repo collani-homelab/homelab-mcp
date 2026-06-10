@@ -44,16 +44,16 @@ Resources and tools are namespaced per server (e.g. `dionysus`, `archive`).
 | `tautulli://activity` | Current Plex sessions via Tautulli |
 | `tautulli://history` | Recent play history |
 | `plex://sessions` | Active Plex streams |
-| `plex://libraries` | Library sizes and last-scan times |
+| `plex://servers` | Connected Plex servers |
 | `radarr://queue` | Movie download queue |
 | `radarr://system/status` | Radarr health |
 | `radarr://movie/missing` | Missing movie subset |
 | `sonarr://queue` | TV episode download queue |
 | `sonarr://system/status` | Sonarr health |
-| `sonarr://series/missing` | Missing episode subset |
+| `sonarr://series` | Full tracked series list |
 | `lidarr://queue` | Music download queue |
 | `lidarr://system/status` | Lidarr health |
-| `lidarr://artist/missing` | Missing music subset |
+| `lidarr://artist` | Full tracked artist list |
 | `nzbget://status` | NZBGet speed, pause state, remaining data |
 | `nzbget://listgroups` | Active download items |
 | `nzbget://history` | Recent download history |
