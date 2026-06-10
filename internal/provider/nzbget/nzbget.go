@@ -89,12 +89,34 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 	case "nzbget://listgroups":
 		method = "listgroups"
 	case "nzbget://history":
-		method = "history"
+		data, err := p.fetchFromNZBGet("history")
+		if err != nil {
+			return "", err
+		}
+		return truncateNZBGetHistory(data, 25), nil
 	default:
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}
 
 	return p.fetchFromNZBGet(method)
+}
+
+func truncateNZBGetHistory(data string, limit int) string {
+	var envelope struct {
+		Version string                   `json:"version"`
+		Result  []map[string]interface{} `json:"result"`
+	}
+	if err := json.Unmarshal([]byte(data), &envelope); err != nil {
+		return data
+	}
+	if len(envelope.Result) > limit {
+		envelope.Result = envelope.Result[:limit]
+	}
+	out, err := json.MarshalIndent(envelope, "", "  ")
+	if err != nil {
+		return data
+	}
+	return string(out)
 }
 
 func (p *Provider) fetchFromNZBGet(method string) (string, error) {

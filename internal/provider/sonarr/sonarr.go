@@ -84,7 +84,15 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 	case "sonarr://system/status":
 		endpoint = "/api/v3/system/status"
 	case "sonarr://series":
-		endpoint = "/api/v3/series"
+		data, err := p.fetchFromSonarr("/api/v3/series")
+		if err != nil {
+			return "", err
+		}
+		limited, err := filterSeriesList([]byte(data), "")
+		if err != nil {
+			return data, nil
+		}
+		return string(limited), nil
 	default:
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}

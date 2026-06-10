@@ -67,7 +67,7 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 		},
 		{
 			URI:      "radarr://movie/missing",
-			Name:     "Radarr Missing Movies (Subset)",
+			Name:     "Radarr Missing Movies (Top 50)",
 			MIMEType: "application/json",
 		},
 	}, nil
@@ -81,7 +81,7 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 	case "radarr://system/status":
 		endpoint = "/api/v3/system/status"
 	case "radarr://movie/missing":
-		endpoint = "/api/v3/movie?monitored=true&hasFile=false"
+		endpoint = "/api/v3/wanted/missing?pageSize=50&sortKey=title&sortDirection=ascending"
 	default:
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}

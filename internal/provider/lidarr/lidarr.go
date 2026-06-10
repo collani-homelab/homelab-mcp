@@ -84,7 +84,15 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 	case "lidarr://system/status":
 		endpoint = "/api/v1/system/status"
 	case "lidarr://artist":
-		endpoint = "/api/v1/artist"
+		data, err := p.fetchFromLidarr("/api/v1/artist")
+		if err != nil {
+			return "", err
+		}
+		limited, err := filterArtistList([]byte(data), "")
+		if err != nil {
+			return data, nil
+		}
+		return string(limited), nil
 	default:
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}
