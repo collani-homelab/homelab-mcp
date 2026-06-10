@@ -11,6 +11,7 @@ permissions:
 jobs:
   review:
     name: review
+    if: github.event.pull_request.user.login == 'wcollani'
     runs-on: [self-hosted, sre]
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
