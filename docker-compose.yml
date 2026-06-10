@@ -12,5 +12,6 @@ services:
       - LOKI_URL=http://192.168.99.178:3100
       - HOMELAB_CONTEXT_URL=http://192.168.99.178:8081
       - DEPLOY_WEBHOOK_URL=http://192.168.99.178:8084
+      - NTFY_URL=http://192.168.99.178:9099
     env_file:
       - .env

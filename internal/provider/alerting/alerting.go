@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -88,7 +89,11 @@ func (p *Provider) sendNtfyAlert(message string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	url := "https://ntfy.sh/homelab_alerts"
+	base := os.Getenv("NTFY_URL")
+	if base == "" {
+		base = "http://192.168.99.178:9099"
+	}
+	url := base + "/homelab_alerts"
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBufferString(message))
 	if err != nil {
 		return err
