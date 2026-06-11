@@ -334,23 +334,19 @@ func (p *Provider) triggerDAG(name, params string) (string, error) {
 		return "", fmt.Errorf("DAGU_API_URL is not configured")
 	}
 
-	var body []byte
+	payload := map[string]interface{}{}
 	if params != "" {
-		b, err := json.Marshal(map[string]interface{}{"params": params})
-		if err != nil {
-			return "", err
-		}
-		body = b
+		payload["params"] = params
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	var reqBody io.Reader
-	if body != nil {
-		reqBody = bytes.NewReader(body)
-	}
-	req, err := p.newRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/dags/%s/start", name), reqBody)
+	req, err := p.newRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/dags/%s/start", name), bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
