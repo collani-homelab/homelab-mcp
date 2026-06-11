@@ -100,12 +100,12 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 			map[string]interface{}{
 				"name": map[string]interface{}{
 					"type":        "string",
-					"description": "The DAG name to stop",
+					"description": "The DAG file name (without .yaml extension) to stop",
 					"required":    true,
 				},
-				"request_id": map[string]interface{}{
+				"dag_run_id": map[string]interface{}{
 					"type":        "string",
-					"description": "The specific run request ID to stop. Omit to stop the latest running execution.",
+					"description": "The specific dagRunId to stop. Omit to stop the latest running execution.",
 				},
 			},
 		),
@@ -115,12 +115,12 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 			map[string]interface{}{
 				"name": map[string]interface{}{
 					"type":        "string",
-					"description": "The DAG name to retry",
+					"description": "The DAG file name (without .yaml extension) to retry",
 					"required":    true,
 				},
-				"request_id": map[string]interface{}{
+				"dag_run_id": map[string]interface{}{
 					"type":        "string",
-					"description": "The request ID of the failed run to retry",
+					"description": "The dagRunId of the failed run to retry",
 					"required":    true,
 				},
 			},
@@ -165,8 +165,8 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 		if !ok || dagName == "" {
 			return mcphelper.ErrorResult(fmt.Errorf("name is required")), nil
 		}
-		requestID, _ := arguments["request_id"].(string)
-		result, err := p.actionDAG(dagName, "stop", requestID)
+		dagRunID, _ := arguments["dag_run_id"].(string)
+		result, err := p.actionDAG(dagName, "stop", dagRunID)
 		if err != nil {
 			return mcphelper.ErrorResult(err), nil
 		}
@@ -177,11 +177,11 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 		if !ok || dagName == "" {
 			return mcphelper.ErrorResult(fmt.Errorf("name is required")), nil
 		}
-		requestID, ok := arguments["request_id"].(string)
-		if !ok || requestID == "" {
-			return mcphelper.ErrorResult(fmt.Errorf("request_id is required for retry")), nil
+		dagRunID, ok := arguments["dag_run_id"].(string)
+		if !ok || dagRunID == "" {
+			return mcphelper.ErrorResult(fmt.Errorf("dag_run_id is required for retry")), nil
 		}
-		result, err := p.actionDAG(dagName, "retry", requestID)
+		result, err := p.actionDAG(dagName, "retry", dagRunID)
 		if err != nil {
 			return mcphelper.ErrorResult(err), nil
 		}
@@ -218,12 +218,14 @@ func (p *Provider) doRequest(req *http.Request) ([]byte, int, error) {
 
 // dagSummary is a pruned representation of a DAG for list output.
 type dagSummary struct {
-	Name       string `json:"name"`
-	Status     string `json:"status"`
-	StatusText string `json:"statusText"`
-	RequestID  string `json:"requestId,omitempty"`
-	StartedAt  string `json:"startedAt,omitempty"`
-	FinishedAt string `json:"finishedAt,omitempty"`
+	Name        string `json:"name"`
+	FileName    string `json:"fileName"`
+	Description string `json:"description,omitempty"`
+	Status      string `json:"status"`
+	DAGRunID    string `json:"dagRunId,omitempty"`
+	StartedAt   string `json:"startedAt,omitempty"`
+	FinishedAt  string `json:"finishedAt,omitempty"`
+	Suspended   bool   `json:"suspended,omitempty"`
 }
 
 func (p *Provider) listDAGs() (string, error) {
@@ -249,10 +251,19 @@ func (p *Provider) listDAGs() (string, error) {
 
 	var raw struct {
 		DAGs []struct {
-			DAG    map[string]interface{} `json:"DAG"`
-			Status map[string]interface{} `json:"Status"`
-		} `json:"DAGs"`
-		HasError bool `json:"HasError"`
+			DAG struct {
+				Name        string `json:"name"`
+				Description string `json:"description"`
+			} `json:"dag"`
+			FileName     string `json:"fileName"`
+			Suspended    bool   `json:"suspended"`
+			LatestDAGRun struct {
+				DAGRunID    string `json:"dagRunId"`
+				StatusLabel string `json:"statusLabel"`
+				StartedAt   string `json:"startedAt"`
+				FinishedAt  string `json:"finishedAt"`
+			} `json:"latestDAGRun"`
+		} `json:"dags"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return "", fmt.Errorf("failed to parse dagu response: %w", err)
@@ -260,33 +271,21 @@ func (p *Provider) listDAGs() (string, error) {
 
 	summaries := make([]dagSummary, 0, len(raw.DAGs))
 	for _, entry := range raw.DAGs {
-		s := dagSummary{}
-		if entry.DAG != nil {
-			if n, ok := entry.DAG["Name"].(string); ok {
-				s.Name = n
-			}
-		}
-		if entry.Status != nil {
-			if st, ok := entry.Status["StatusText"].(string); ok {
-				s.StatusText = st
-			}
-			if rid, ok := entry.Status["RequestId"].(string); ok {
-				s.RequestID = rid
-			}
-			if start, ok := entry.Status["StartedAt"].(string); ok {
-				s.StartedAt = start
-			}
-			if fin, ok := entry.Status["FinishedAt"].(string); ok {
-				s.FinishedAt = fin
-			}
-		}
-		summaries = append(summaries, s)
+		summaries = append(summaries, dagSummary{
+			Name:        entry.DAG.Name,
+			FileName:    entry.FileName,
+			Description: entry.DAG.Description,
+			Status:      entry.LatestDAGRun.StatusLabel,
+			DAGRunID:    entry.LatestDAGRun.DAGRunID,
+			StartedAt:   entry.LatestDAGRun.StartedAt,
+			FinishedAt:  entry.LatestDAGRun.FinishedAt,
+			Suspended:   entry.Suspended,
+		})
 	}
 
 	out, err := json.MarshalIndent(map[string]interface{}{
-		"dags":     summaries,
-		"hasError": raw.HasError,
-		"count":    len(summaries),
+		"dags":  summaries,
+		"count": len(summaries),
 	}, "", "  ")
 	if err != nil {
 		return "", err
@@ -367,7 +366,7 @@ func (p *Provider) actionDAG(name, action, requestID string) (string, error) {
 
 	payload := map[string]interface{}{"action": action}
 	if requestID != "" {
-		payload["requestId"] = requestID
+		payload["dagRunId"] = requestID
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
