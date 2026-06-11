@@ -8,6 +8,7 @@ import (
 	ragcontext "homelab-mcp/internal/provider/context"
 	"homelab-mcp/internal/provider/dagu"
 	"homelab-mcp/internal/provider/deploy"
+	"homelab-mcp/internal/provider/grafana"
 	"homelab-mcp/internal/provider/hello"
 	"homelab-mcp/internal/provider/lidarr"
 	"homelab-mcp/internal/provider/monitoring"
@@ -206,6 +207,20 @@ func setupServer() *mcp.Server {
 		}
 	} else {
 		slog.Warn("LIDARR_API_URL not set, skipping Lidarr provider")
+	}
+
+	// Add Grafana Provider
+	grafanaURL := os.Getenv("GRAFANA_URL")
+	if grafanaURL != "" {
+		s.AddProvider(grafana.NewProvider(
+			grafanaURL,
+			os.Getenv("GRAFANA_API_KEY"),
+			os.Getenv("GRAFANA_USER"),
+			os.Getenv("GRAFANA_PASS"),
+		))
+		slog.Info("Grafana provider added", "url", grafanaURL)
+	} else {
+		slog.Warn("GRAFANA_URL not set, skipping Grafana provider")
 	}
 
 	// Add Dagu Provider
