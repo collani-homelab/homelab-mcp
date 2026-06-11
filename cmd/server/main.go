@@ -45,7 +45,8 @@ func setupServer() *mcp.Server {
 
 	// Add Deploy Provider
 	deployWebhookURL := os.Getenv("DEPLOY_WEBHOOK_URL")
-	s.AddProvider(deploy.NewProvider(deployWebhookURL))
+	ghToken := os.Getenv("GH_TOKEN")
+	s.AddProvider(deploy.NewProvider(deployWebhookURL, ghToken))
 	slog.Info("Deploy provider added", "webhook_url", deployWebhookURL)
 
 	// Scan environment variables for UNRAID_*_URL
