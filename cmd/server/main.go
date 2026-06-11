@@ -6,6 +6,7 @@ import (
 	"homelab-mcp/internal/mcp"
 	"homelab-mcp/internal/provider/alerting"
 	ragcontext "homelab-mcp/internal/provider/context"
+	"homelab-mcp/internal/provider/dagu"
 	"homelab-mcp/internal/provider/deploy"
 	"homelab-mcp/internal/provider/hello"
 	"homelab-mcp/internal/provider/lidarr"
@@ -205,6 +206,15 @@ func setupServer() *mcp.Server {
 		}
 	} else {
 		slog.Warn("LIDARR_API_URL not set, skipping Lidarr provider")
+	}
+
+	// Add Dagu Provider
+	daguURL := os.Getenv("DAGU_API_URL")
+	if daguURL != "" {
+		s.AddProvider(dagu.NewProvider(daguURL, os.Getenv("DAGU_API_KEY")))
+		slog.Info("Dagu provider added", "url", daguURL)
+	} else {
+		slog.Warn("DAGU_API_URL not set, skipping Dagu provider")
 	}
 
 	// Add NZBGet Provider
