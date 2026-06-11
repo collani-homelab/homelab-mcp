@@ -73,6 +73,11 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 			Name:     "Lidarr Artists",
 			MIMEType: "application/json",
 		},
+		{
+			URI:      "lidarr://wanted",
+			Name:     "Lidarr Wanted/Missing Albums",
+			MIMEType: "application/json",
+		},
 	}, nil
 }
 
@@ -83,6 +88,8 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 		endpoint = "/api/v1/queue"
 	case "lidarr://system/status":
 		endpoint = "/api/v1/system/status"
+	case "lidarr://wanted":
+		endpoint = "/api/v1/wanted/missing?pageSize=25&sortKey=title&sortDirection=ascending"
 	case "lidarr://artist":
 		data, err := p.fetchFromLidarr("/api/v1/artist")
 		if err != nil {
