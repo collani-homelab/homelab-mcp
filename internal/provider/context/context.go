@@ -175,7 +175,7 @@ func (p *Provider) queryKnowledge(query string, topK int, filterType string) (*m
 	if err != nil {
 		return mcphelper.TextResult(fmt.Sprintf("Error: homelab-context RAG server is offline or unreachable at %s: %v. RAG queries are temporarily unavailable.", p.baseURL, err)), nil
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return mcphelper.TextResult(fmt.Sprintf("Error: homelab-context server returned status code %d at %s. RAG queries are temporarily unavailable.", resp.StatusCode, p.baseURL)), nil
@@ -248,7 +248,7 @@ func (p *Provider) indexDocument(content, source, docType string) (*mcp.CallTool
 	if err != nil {
 		return mcphelper.TextResult(fmt.Sprintf("Error: homelab-context RAG server is offline or unreachable at %s: %v. Indexing is temporarily unavailable.", p.baseURL, err)), nil
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return mcphelper.TextResult(fmt.Sprintf("Error: homelab-context server returned status code %d at %s. Indexing is temporarily unavailable.", resp.StatusCode, p.baseURL)), nil
