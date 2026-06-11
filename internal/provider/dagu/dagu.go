@@ -165,8 +165,11 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 		if !ok || dagName == "" {
 			return mcphelper.ErrorResult(fmt.Errorf("name is required")), nil
 		}
-		dagRunID, _ := arguments["dag_run_id"].(string)
-		result, err := p.actionDAG(dagName, "stop", dagRunID)
+		dagRunID, ok := arguments["dag_run_id"].(string)
+		if !ok || dagRunID == "" {
+			return mcphelper.ErrorResult(fmt.Errorf("dag_run_id is required to stop a specific run")), nil
+		}
+		result, err := p.dagRunAction(dagName, dagRunID, "stop")
 		if err != nil {
 			return mcphelper.ErrorResult(err), nil
 		}
@@ -181,7 +184,7 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 		if !ok || dagRunID == "" {
 			return mcphelper.ErrorResult(fmt.Errorf("dag_run_id is required for retry")), nil
 		}
-		result, err := p.actionDAG(dagName, "retry", dagRunID)
+		result, err := p.dagRunAction(dagName, dagRunID, "retry")
 		if err != nil {
 			return mcphelper.ErrorResult(err), nil
 		}
@@ -331,19 +334,23 @@ func (p *Provider) triggerDAG(name, params string) (string, error) {
 		return "", fmt.Errorf("DAGU_API_URL is not configured")
 	}
 
-	payload := map[string]interface{}{"action": "start"}
+	var body []byte
 	if params != "" {
-		payload["params"] = params
-	}
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return "", err
+		b, err := json.Marshal(map[string]interface{}{"params": params})
+		if err != nil {
+			return "", err
+		}
+		body = b
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	req, err := p.newRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/dags/%s/action", name), bytes.NewReader(body))
+	var reqBody io.Reader
+	if body != nil {
+		reqBody = bytes.NewReader(body)
+	}
+	req, err := p.newRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/dags/%s/start", name), reqBody)
 	if err != nil {
 		return "", err
 	}
@@ -356,27 +363,19 @@ func (p *Provider) triggerDAG(name, params string) (string, error) {
 		return "", fmt.Errorf("trigger failed (HTTP %d): %s", status, string(data))
 	}
 
-	return fmt.Sprintf("DAG %q triggered successfully. Response: %s", name, string(data)), nil
+	return fmt.Sprintf("DAG %q triggered successfully.", name), nil
 }
 
-func (p *Provider) actionDAG(name, action, requestID string) (string, error) {
+func (p *Provider) dagRunAction(dagName, dagRunID, action string) (string, error) {
 	if p.baseURL == "" {
 		return "", fmt.Errorf("DAGU_API_URL is not configured")
-	}
-
-	payload := map[string]interface{}{"action": action}
-	if requestID != "" {
-		payload["dagRunId"] = requestID
-	}
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	req, err := p.newRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/dags/%s/action", name), bytes.NewReader(body))
+	path := fmt.Sprintf("/api/v1/dag-runs/%s/%s/%s", dagName, dagRunID, action)
+	req, err := p.newRequest(ctx, http.MethodPost, path, nil)
 	if err != nil {
 		return "", err
 	}
@@ -385,11 +384,11 @@ func (p *Provider) actionDAG(name, action, requestID string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("dagu unreachable: %w", err)
 	}
-	if status != http.StatusOK {
-		return "", fmt.Errorf("action %q failed (HTTP %d): %s", action, status, string(data))
+	if status != http.StatusOK && status != http.StatusNoContent {
+		return "", fmt.Errorf("%s failed (HTTP %d): %s", action, status, string(data))
 	}
 
-	return fmt.Sprintf("DAG %q action %q completed successfully.", name, action), nil
+	return fmt.Sprintf("DAG %q run %q: %s succeeded.", dagName, dagRunID, action), nil
 }
 
 // pruneJSON removes specified keys from a JSON byte slice to reduce token usage.
