@@ -2,7 +2,7 @@
 
 ## Completed Work
 
-All four active phases are complete. The server is deployed as a daemonized Docker container on the SRE machine (192.168.99.178:8083) using SSE transport, backed by a local Docker registry and a CI/CD Golden Path pipeline.
+Phases 1–6 are complete. The server is deployed as a daemonized Docker container on the SRE machine (192.168.99.178:8083) using SSE transport, backed by a local Docker registry and a CI/CD Golden Path pipeline. Four autonomous agent workflows run on the same machine via Dagu.
 
 **Phase 1 & 2 — Read-Only Foundation**
 - Go module, `mise` toolchain, MCP skeleton with hello-world resource.
@@ -22,9 +22,46 @@ All four active phases are complete. The server is deployed as a daemonized Dock
 - `context` (RAG) provider: `query_knowledge` and `index_document` against Qdrant via the homelab-context service.
 - `alerting` provider: `send_notification` via ntfy.sh.
 
+**Phase 5 — Orchestration & Observability**
+- `dagu` provider: `list_dags`, `get_dag`, `trigger_dag`, `stop_dag`, `retry_dag` — exposes Dagu DAG state and control as MCP tools.
+- `grafana` provider: `list_grafana_dashboards`, `get_grafana_dashboard`, `get_grafana_alerts` — surfaces dashboard panels and firing alerts as MCP resources.
+- `deploy` provider: `redeploy_service` — triggers homelab-deploy webhook for systemd service restarts from MCP.
+
+**Phase 6 — Agentic Workflows (Milestone D)**
+- Four containerized agent images built and pushed to local registry (`192.168.99.178:5000`):
+  - `homelab-agent-sre-patrol` — polls Unraid, UPS, and Prometheus every 15 min; alerts on threshold breaches.
+  - `homelab-agent-storage-report` — weekly capacity report with projected fill dates and LLM narrative.
+  - `homelab-agent-media-health` — daily check of NZBGet, Sonarr, Radarr, Tautulli pipeline health.
+  - `homelab-agent-network-sentinel` — 5-min UniFi poll against a known-device allowlist; alerts on new MACs.
+- All four agents run as Dagu DAGs via `docker run` steps; custom `homelab-dagu` image includes docker CLI.
+- `build-agents.sh` in `homelab/Tools/` builds and pushes all four images to the local registry.
+
 ---
 
-## Won't Do — Phase 5: Prompt-to-Tool Mapping
+## Planned — Phase 7: LLM Observability & UI Providers
+
+These providers extend MCP coverage to the local LLM inference stack and its tooling.
+
+**`internal/provider/litellm/`**
+- Resources: `litellm://models` (routing table), `litellm://usage` (token spend by model, last 24h/7d).
+- Tools: `query_model_usage` — token counts, latency percentiles, error rates per model.
+- Value: lets agents and patrol scripts detect context-limit violations, routing failures, and cost anomalies.
+
+**`internal/provider/arize/`** (Arize Phoenix)
+- Resources: `arize://spans/recent` — LLM trace spans: model, prompt token count, latency, evaluation scores.
+- Tools: `query_spans` — filter by model, time window, or evaluation outcome.
+- Value: surfaces which prompts/models are underperforming; closes the observability loop on agent runs.
+
+**`internal/provider/openwebui/`** (Open WebUI)
+- Resources: `openwebui://users`, `openwebui://models/active`.
+- Tools: `query_usage` — per-user session counts, model selection patterns, recent conversations.
+- Value: usage analytics without context-switching; useful for understanding which local models are actually being used.
+
+All three follow the existing Provider interface in `internal/provider/provider.go`.
+
+---
+
+## Won't Do — Prompt-to-Tool Mapping
 
 **Original goal:** Dynamically expose all MCP Prompts as standard MCP Tools so clients like Open WebUI and LibreChat (which lack native prompt UI support) could invoke them.
 
