@@ -2,7 +2,7 @@
 
 ## Completed Work
 
-Phases 1–6 are complete. The server is deployed as a daemonized Docker container on the SRE machine (192.168.99.178:8083) using SSE transport, backed by a local Docker registry and a CI/CD Golden Path pipeline. Four autonomous agent workflows run on the same machine via Dagu.
+Phases 1–6 are complete. The server is deployed as a daemonized Docker container using SSE transport, backed by a local Docker registry and a CI/CD Golden Path pipeline. Four autonomous agent workflows run via Dagu.
 
 **Phase 1 & 2 — Read-Only Foundation**
 - Go module, `mise` toolchain, MCP skeleton with hello-world resource.
@@ -28,7 +28,7 @@ Phases 1–6 are complete. The server is deployed as a daemonized Docker contain
 - `deploy` provider: `redeploy_service` — triggers homelab-deploy webhook for systemd service restarts from MCP.
 
 **Phase 6 — Agentic Workflows (Milestone D)**
-- Four containerized agent images built and pushed to local registry (`192.168.99.178:5000`):
+- Four containerized agent images built and pushed to a local Docker registry:
   - `homelab-agent-sre-patrol` — polls Unraid, UPS, and Prometheus every 15 min; alerts on threshold breaches.
   - `homelab-agent-storage-report` — weekly capacity report with projected fill dates and LLM narrative.
   - `homelab-agent-media-health` — daily check of NZBGet, Sonarr, Radarr, Tautulli pipeline health.

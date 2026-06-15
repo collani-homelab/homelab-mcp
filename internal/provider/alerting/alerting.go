@@ -91,7 +91,7 @@ func (p *Provider) sendNtfyAlert(message string) error {
 
 	base := os.Getenv("NTFY_URL")
 	if base == "" {
-		base = "http://192.168.99.178:9099"
+		base = "http://localhost:9099"
 	}
 	url := base + "/homelab_alerts"
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBufferString(message))

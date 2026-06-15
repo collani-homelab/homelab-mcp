@@ -82,12 +82,11 @@ The server supports two transports, selected via the `MCP_TRANSPORT` environment
 
 ## 7. Deployment
 
-The production instance runs as a Docker container on the SRE machine:
+The server runs as a Docker container via `docker-compose.yml`:
 
-- **Image:** `192.168.99.178:5000/homelab-mcp:v2` (local registry)
+- **Image:** Configured via `IMAGE_TAG` env var (e.g. `your-registry:5000/homelab-mcp:latest`); defaults to `homelab-mcp:latest` for local builds
 - **Port:** 8083 on host → 8080 in container
-- **Compose file:** `docker-compose.yml` (server copy at `/home/wcollani/repos/homelab-mcp/`)
-- **CI/CD:** GitHub Actions (`deploy.yml`) → `mise run docker-build && docker-push` → `homelab-deploy -deploy homelab-mcp`
+- **CI/CD:** GitHub Actions (`deploy.yml`) → `mise run docker-build && docker-push` → deploy step (configure for your environment)
 
 ## 9. PR Workflow
 
@@ -99,7 +98,7 @@ All changes reach `main` via PR. Three workflow files implement the full loop:
 | `pr-review.yml` | `pull_request` to `main` | `[self-hosted, sre]` | Claude code-review + security-review (advisory) + ntfy notify |
 | `deploy.yml` | `push` to `main` | `[self-hosted, sre]` | Docker build → local registry → `homelab-deploy -deploy homelab-mcp` |
 
-The `review` job in `pr-review.yml` is gated to `wcollani`-authored PRs only. Both review steps use `continue-on-error: true`; the notify step fires via `if: always()`.
+The `review` job in `pr-review.yml` is gated to the repository owner's PRs only (via `github.repository_owner` comparison). Both review steps use `continue-on-error: true`; the notify step fires via `if: always()`.
 
 > Full spec, security risk notes, runner label table, and LiteLLM swap instructions:
 > **[homelab-platform/ARCHITECTURE.md §6 — PR Workflow Golden Path](../homelab-platform/ARCHITECTURE.md#6-pr-workflow-golden-path)**

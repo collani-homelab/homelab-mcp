@@ -8,7 +8,7 @@ This repository is the Model Context Protocol (MCP) server for the homelab. It e
 
 - **Primary Language:** Go 1.22+
 - **Toolchain:** `mise` for environment and task management
-- **Deployment:** Docker container on the SRE machine (`192.168.99.178:8083`), SSE transport, local registry at `192.168.99.178:5000`
+- **Deployment:** Docker container via SSE transport (default port 8083); registry and deploy paths configured via `IMAGE_TAG` and `DEPLOY_WEBHOOK_URL` env vars
 
 ## 2. High-Level Architecture
 

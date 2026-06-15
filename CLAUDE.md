@@ -2,10 +2,6 @@
 
 This repository defines the Model Context Protocol (MCP) server for local homelab integrations. It implements providers for Unraid, UniFi, Plex/Tautulli, Starr applications (Radarr, Sonarr, Lidarr), and NZBGet.
 
-## 🔗 Global Guidelines Reference
-All development in this repository must align with the top-level principles defined in the master rulebook:
-👉 **[GLOBAL_CLAUDE.md](file:///home/wcollani/repos/homelab/src/meta/GLOBAL_CLAUDE.md)**
-
 ---
 
 ## 🛠️ Build and Development Commands
@@ -53,13 +49,13 @@ We use `mise` for environment and toolchain management.
 ## 📐 Local Coding Standards & Rules
 
 ### 1. The Provider Pattern
-Every new homelab integration must be implemented as a separate provider that implements the `Provider` interface defined in [provider.go](file:///home/wcollani/repos/homelab-mcp/internal/provider/provider.go):
+Every new homelab integration must be implemented as a separate provider that implements the `Provider` interface defined in [provider.go](internal/provider/provider.go):
 - Expose state and read-only data as **MCP Resources**.
 - Expose actions and state-mutating requests as **MCP Tools**.
 - Register new providers inside the server setup in `internal/mcp/`.
 
 ### 2. API Best Practices
-- **JSON Pruning (Mandatory):** Do not return large raw payloads to the MCP client. Always use the `provider.PruneJSON` utility in [util.go](file:///home/wcollani/repos/homelab-mcp/internal/provider/util.go) to strip token-wasting metadata (e.g., `_id`, `uuid`, `fingerprint`, internal timestamps) before returning response data.
+- **JSON Pruning (Mandatory):** Do not return large raw payloads to the MCP client. Always use the `provider.PruneJSON` utility in [util.go](internal/provider/util.go) to strip token-wasting metadata (e.g., `_id`, `uuid`, `fingerprint`, internal timestamps) before returning response data.
 - **Fail-Fast with Timeouts:** Always wrap external API calls in a `context.WithTimeout` block (default to 10 seconds) to prevent slow or offline homelab services from hanging the client.
 - **Graceful Error Handling:** If a provider fails to initialize or experiences connection issues, log the error but **do not crash** the main server loop. Other providers must continue serving requests.
 
@@ -69,4 +65,4 @@ Every new homelab integration must be implemented as a separate provider that im
 
 ### 4. Unraid Introspection Constraint
 - Unraid's GraphQL endpoint has strict depth limits. Avoid initiating deep GraphQL introspection queries.
-- Use helper scripts in the [scratch/](file:///home/wcollani/repos/homelab-mcp/scratch/) folder to test and iteratively discover valid schema fields.
+- Use helper scripts in the [scratch/](scratch/) folder to test and iteratively discover valid schema fields.

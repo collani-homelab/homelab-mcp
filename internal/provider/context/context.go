@@ -82,7 +82,7 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 			},
 			"source": map[string]interface{}{
 				"type":        "string",
-				"description": "The source/file identifier (e.g. /home/wcollani/repos/homelab/src/meta/GLOBAL_CLAUDE.md).",
+				"description": "The source/file identifier (e.g. /path/to/repo/docs/architecture.md or a URL).",
 				"required":    true,
 			},
 			"type": map[string]interface{}{

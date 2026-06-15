@@ -2,7 +2,7 @@
 
 A Model Context Protocol (MCP) server written in Go that gives AI assistants live context from the homelab: infrastructure state, media stack activity, metrics, logs, and notifications.
 
-The server runs as a Docker container on the SRE machine (`192.168.99.178:8083`) using SSE transport. For design decisions and codebase structure, see [ARCHITECTURE.md](ARCHITECTURE.md).
+The server runs as a Docker container (SSE transport, default port 8083) and also supports stdio transport for Claude Desktop and local MCP clients. For design decisions and codebase structure, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Capabilities
 
@@ -168,5 +168,3 @@ LOKI_URL=http://host:3100
 HOMELAB_CONTEXT_URL=http://host:8081
 ```
 
-### Meaningless section to trigger CI
-Hello

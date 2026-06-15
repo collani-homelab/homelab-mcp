@@ -17,14 +17,16 @@ jobs:
 
       - name: Build and Push Image
         env:
-          IMAGE_TAG: "192.168.99.178:5000/homelab-mcp:latest"
+          IMAGE_TAG: ${{ vars.REGISTRY_URL }}/homelab-mcp:latest
         run: |
           mise run docker-build
           mise run docker-push
 
       - name: Deploy Service
+        env:
+          PLATFORM_REPO: ${{ vars.PLATFORM_REPO_PATH }}
         run: |
-          cd ~/repos/homelab-platform
+          cd "$PLATFORM_REPO"
           git pull
           mise run build
           ./homelab-deploy -deploy homelab-mcp -repo .
