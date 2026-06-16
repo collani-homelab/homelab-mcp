@@ -27,9 +27,6 @@ Phases 1–6 are complete. The server is deployed as a daemonized Docker contain
 - `grafana` provider: `list_grafana_dashboards`, `get_grafana_dashboard`, `get_grafana_alerts` — surfaces dashboard panels and firing alerts as MCP resources.
 - `deploy` provider: `redeploy_service` — triggers homelab-deploy webhook for systemd service restarts from MCP.
 
-**Phase 7 (partial) — LLM Observability**
-- `phoenix` provider: `phoenix://projects`, `phoenix://traces/{project}`, `phoenix://evaluations/{project}` resources; `query_phoenix_traces`, `get_phoenix_eval_scores`, `get_phoenix_span_errors` tools — surfaces Arize Phoenix span/trace/eval data (model, latency, status, annotation scores) so agents can introspect their own past LLM calls.
-
 **Phase 6 — Agentic Workflows (Milestone D)**
 - Four containerized agent images built and pushed to a local Docker registry:
   - `homelab-agent-sre-patrol` — polls Unraid, UPS, and Prometheus every 15 min; alerts on threshold breaches.
@@ -38,6 +35,22 @@ Phases 1–6 are complete. The server is deployed as a daemonized Docker contain
   - `homelab-agent-network-sentinel` — 5-min UniFi poll against a known-device allowlist; alerts on new MACs.
 - All four agents run as Dagu DAGs via `docker run` steps; custom `homelab-dagu` image includes docker CLI.
 - `build-agents.sh` in `homelab/Tools/` builds and pushes all four images to the local registry.
+
+**Phase 7 (partial) — LLM Observability**
+- `phoenix` provider: `phoenix://projects`, `phoenix://traces/{project}`, `phoenix://evaluations/{project}` resources; `query_phoenix_traces`, `get_phoenix_eval_scores`, `get_phoenix_span_errors` tools — surfaces Arize Phoenix span/trace/eval data (model, latency, status, annotation scores) so agents can introspect their own past LLM calls.
+- Live-verified against the deployed Phoenix instance on the SRE machine via the MCP Inspector CLI. Found and fixed a real bug in the process: Phoenix's `/v1/projects/{project}/span_annotations` endpoint 422s unless `span_ids` or `identifier` is supplied — `get_phoenix_eval_scores` and the `phoenix://evaluations/{project}` resource now fetch the project's LLM spans first to collect span IDs before requesting annotations.
+
+---
+
+## Known Issues
+
+**`homelab-mcp`'s GitHub Actions Deploy workflow does not run.** Two compounding causes, found 2026-06-16 while deploying the Phoenix provider:
+1. The repo is public (`collani-homelab/homelab-mcp`) and the org's only self-hosted runner group (`Default`) has `allows_public_repositories: false`, so GitHub never dispatches the job to the `sre-machine` runner — it queues forever.
+2. The `REGISTRY_URL` and `PLATFORM_REPO_PATH` repo variables referenced in `deploy.yml` are unset (`gh variable list` returns empty) — likely lost when the repo moved from `wcollani/homelab-mcp` to `collani-homelab/homelab-mcp`.
+
+Until fixed, deploy manually from the SRE machine: `IMAGE_TAG=192.168.99.178:5000/homelab-mcp:latest mise run docker-build && mise run docker-push`, then `~/repos/homelab-platform/homelab-deploy -deploy homelab-mcp -repo ~/repos/homelab-platform`.
+
+Separately, the live `.env` on the SRE machine had no `IMAGE_TAG` set, so the systemd-managed `docker compose up --pull always` (see `Provisioning/sre-machine.json` in `homelab-platform`) fell back to the bare `homelab-mcp:latest` tag and tried (and failed) to pull from Docker Hub, crash-looping the service. Fixed by adding `IMAGE_TAG` to `.env` — see the updated `.env.example`.
 
 ---
 
