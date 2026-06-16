@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func TestNewProviderFromEnv(t *testing.T) {
@@ -93,6 +95,63 @@ func TestProvider_CallTool_MissingProject(t *testing.T) {
 	}
 	if !result.IsError {
 		t.Error("expected error result for missing project argument")
+	}
+}
+
+func TestProvider_CallTool_GetEvalScores(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/projects/agents/spans", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data": [{"id": "s1", "name": "llm_call", "context": {"trace_id": "t1", "span_id": "sp1"}, "span_kind": "LLM", "start_time": "2024-01-01T00:00:00Z", "end_time": "2024-01-01T00:00:01Z", "status_code": "OK", "attributes": {"llm.model_name": "gpt-4"}}], "next_cursor": null}`))
+	})
+	mux.HandleFunc("/v1/projects/agents/span_annotations", func(w http.ResponseWriter, r *http.Request) {
+		// Phoenix requires span_ids or identifier — verify we always send one.
+		if r.URL.Query().Get("span_ids") != "sp1" {
+			t.Errorf("expected span_ids=sp1, got query %s", r.URL.RawQuery)
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data": [{"id": "a1", "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "source": "API", "user_id": null, "name": "correctness", "annotator_kind": "LLM", "result": {"label": "correct", "score": 1.0, "explanation": null}, "span_id": "sp1"}], "next_cursor": null}`))
+	})
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	p := NewProvider(ts.URL)
+	result, err := p.CallTool("get_phoenix_eval_scores", map[string]interface{}{
+		"project": "agents",
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success result, got error: %+v", result.Content)
+	}
+	text := result.Content[0].(*mcp.TextContent).Text
+	if !strings.Contains(text, "gpt-4") || !strings.Contains(text, "correctness") {
+		t.Errorf("expected aggregated score for gpt-4/correctness, got %s", text)
+	}
+}
+
+func TestProvider_CallTool_GetEvalScores_NoSpans(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/projects/agents/spans", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data": [], "next_cursor": null}`))
+	})
+	mux.HandleFunc("/v1/projects/agents/span_annotations", func(w http.ResponseWriter, r *http.Request) {
+		t.Error("span_annotations should not be called when there are no spans")
+	})
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	p := NewProvider(ts.URL)
+	result, err := p.CallTool("get_phoenix_eval_scores", map[string]interface{}{
+		"project": "agents",
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success result, got error: %+v", result.Content)
 	}
 }
 

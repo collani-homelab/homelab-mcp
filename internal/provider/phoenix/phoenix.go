@@ -56,7 +56,7 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 		return p.listTraces(project, defaultLookback, 50)
 	case strings.HasPrefix(uri, "phoenix://evaluations/"):
 		project := strings.TrimPrefix(uri, "phoenix://evaluations/")
-		return p.listSpanAnnotations(project, "", 100)
+		return p.listSpanAnnotations(project, defaultLookback, 100)
 	}
 	return "", fmt.Errorf("resource not found: %s", uri)
 }
@@ -481,8 +481,19 @@ type spanAnnotationsResponse struct {
 	Data []spanAnnotation `json:"data"`
 }
 
-func (p *Provider) fetchSpanAnnotations(project, annotationName string, limit int) ([]spanAnnotation, error) {
+// fetchSpanAnnotations looks up annotations for a set of OTel span IDs.
+// Phoenix's span_annotations endpoint requires at least one of span_ids or
+// identifier — it is not a free listing endpoint — so an empty spanIDs slice
+// short-circuits to an empty result instead of issuing a guaranteed-422 call.
+func (p *Provider) fetchSpanAnnotations(project string, spanIDs []string, annotationName string, limit int) ([]spanAnnotation, error) {
+	if len(spanIDs) == 0 {
+		return nil, nil
+	}
+
 	query := url.Values{"limit": {fmt.Sprintf("%d", limit)}}
+	for _, id := range spanIDs {
+		query.Add("span_ids", id)
+	}
 	if annotationName != "" {
 		query.Add("include_annotation_names", annotationName)
 	}
@@ -499,8 +510,17 @@ func (p *Provider) fetchSpanAnnotations(project, annotationName string, limit in
 	return raw.Data, nil
 }
 
-func (p *Provider) listSpanAnnotations(project, annotationName string, limit int) (string, error) {
-	annotations, err := p.fetchSpanAnnotations(project, annotationName, limit)
+func (p *Provider) listSpanAnnotations(project, lookback string, limit int) (string, error) {
+	spans, err := p.fetchSpans(project, "", "", lookback, 500)
+	if err != nil {
+		return "", err
+	}
+	spanIDs := make([]string, len(spans))
+	for i, s := range spans {
+		spanIDs[i] = s.Context.SpanID
+	}
+
+	annotations, err := p.fetchSpanAnnotations(project, spanIDs, "", limit)
 	if err != nil {
 		return "", err
 	}
@@ -531,15 +551,17 @@ func (p *Provider) getEvalScores(project, lookback, annotationName string) (stri
 	}
 
 	modelBySpanID := make(map[string]string, len(spans))
-	for _, s := range spans {
+	spanIDs := make([]string, len(spans))
+	for i, s := range spans {
 		model, _ := s.Attributes["llm.model_name"].(string)
 		if model == "" {
 			model = "unknown"
 		}
 		modelBySpanID[s.Context.SpanID] = model
+		spanIDs[i] = s.Context.SpanID
 	}
 
-	annotations, err := p.fetchSpanAnnotations(project, annotationName, 1000)
+	annotations, err := p.fetchSpanAnnotations(project, spanIDs, annotationName, 1000)
 	if err != nil {
 		return "", err
 	}
