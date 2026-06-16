@@ -13,6 +13,7 @@ import (
 	"homelab-mcp/internal/provider/lidarr"
 	"homelab-mcp/internal/provider/monitoring"
 	"homelab-mcp/internal/provider/nzbget"
+	"homelab-mcp/internal/provider/phoenix"
 	"homelab-mcp/internal/provider/plex"
 	"homelab-mcp/internal/provider/radarr"
 	"homelab-mcp/internal/provider/sonarr"
@@ -249,6 +250,15 @@ func setupServer() *mcp.Server {
 		}
 	} else {
 		slog.Warn("NZBGET_API_URL not set, skipping NZBGet provider")
+	}
+
+	// Add Phoenix Provider
+	phoenixURL := os.Getenv("PHOENIX_URL")
+	if phoenixURL != "" {
+		s.AddProvider(phoenix.NewProvider(phoenixURL))
+		slog.Info("Phoenix provider added", "url", phoenixURL)
+	} else {
+		slog.Warn("PHOENIX_URL not set, skipping Phoenix provider")
 	}
 
 	return s

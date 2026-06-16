@@ -27,6 +27,9 @@ Phases 1–6 are complete. The server is deployed as a daemonized Docker contain
 - `grafana` provider: `list_grafana_dashboards`, `get_grafana_dashboard`, `get_grafana_alerts` — surfaces dashboard panels and firing alerts as MCP resources.
 - `deploy` provider: `redeploy_service` — triggers homelab-deploy webhook for systemd service restarts from MCP.
 
+**Phase 7 (partial) — LLM Observability**
+- `phoenix` provider: `phoenix://projects`, `phoenix://traces/{project}`, `phoenix://evaluations/{project}` resources; `query_phoenix_traces`, `get_phoenix_eval_scores`, `get_phoenix_span_errors` tools — surfaces Arize Phoenix span/trace/eval data (model, latency, status, annotation scores) so agents can introspect their own past LLM calls.
+
 **Phase 6 — Agentic Workflows (Milestone D)**
 - Four containerized agent images built and pushed to a local Docker registry:
   - `homelab-agent-sre-patrol` — polls Unraid, UPS, and Prometheus every 15 min; alerts on threshold breaches.
@@ -38,19 +41,14 @@ Phases 1–6 are complete. The server is deployed as a daemonized Docker contain
 
 ---
 
-## Planned — Phase 7: LLM Observability & UI Providers
+## Planned — Phase 7: LLM Observability & UI Providers (remaining)
 
-These providers extend MCP coverage to the local LLM inference stack and its tooling.
+These providers extend MCP coverage to the local LLM inference stack and its tooling. The Phoenix piece of Phase 7 is done (see Completed Work above); `litellm` and `openwebui` remain.
 
 **`internal/provider/litellm/`**
 - Resources: `litellm://models` (routing table), `litellm://usage` (token spend by model, last 24h/7d).
 - Tools: `query_model_usage` — token counts, latency percentiles, error rates per model.
 - Value: lets agents and patrol scripts detect context-limit violations, routing failures, and cost anomalies.
-
-**`internal/provider/arize/`** (Arize Phoenix)
-- Resources: `arize://spans/recent` — LLM trace spans: model, prompt token count, latency, evaluation scores.
-- Tools: `query_spans` — filter by model, time window, or evaluation outcome.
-- Value: surfaces which prompts/models are underperforming; closes the observability loop on agent runs.
 
 **`internal/provider/openwebui/`** (Open WebUI)
 - Resources: `openwebui://users`, `openwebui://models/active`.

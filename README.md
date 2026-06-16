@@ -65,6 +65,17 @@ Resources and tools are namespaced per server (e.g. `dionysus`, `archive`).
 | `query_promql` | Execute a PromQL query against Prometheus |
 | `query_logql` | Execute a LogQL query against Loki (optional `lookback` duration, default `1h`) |
 
+### LLM Observability — Arize Phoenix
+
+| Resource / Tool | Description |
+|---|---|
+| `phoenix://projects` | All Phoenix trace projects |
+| `phoenix://traces/{project}` | Recent traces with span summaries (resource template) |
+| `phoenix://evaluations/{project}` | Span evaluation/annotation scores (resource template) |
+| `query_phoenix_traces` tool | Filter LLM spans by model, status, and time range |
+| `get_phoenix_eval_scores` tool | Aggregate eval/annotation scores per model |
+| `get_phoenix_span_errors` tool | Failed LLM spans with error details |
+
 ### Context & Alerting
 
 | Tool | Description |
