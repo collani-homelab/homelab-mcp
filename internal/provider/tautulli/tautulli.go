@@ -32,7 +32,12 @@ func NewProvider(baseURL, apiKey string, skipVerify bool) (*Provider, error) {
 		return nil, fmt.Errorf("invalid base URL: %w", err)
 	}
 
-	transport := http.DefaultTransport.(*http.Transport).Clone()
+	var transport *http.Transport
+	if dt, ok := http.DefaultTransport.(*http.Transport); ok {
+		transport = dt.Clone()
+	} else {
+		transport = &http.Transport{}
+	}
 	if skipVerify {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
