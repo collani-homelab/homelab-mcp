@@ -1,6 +1,7 @@
 package unraid
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -93,7 +94,7 @@ func TestProvider_GetResourceContent_Success(t *testing.T) {
 	defer ts.Close()
 
 	p, _ := NewProvider("test-server", ts.URL, "test-key", false)
-	content, err := p.GetResourceContent("unraid://test-server/containers")
+	content, err := p.GetResourceContent(context.Background(), "unraid://test-server/containers")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -124,13 +125,13 @@ func TestProvider_GetResourceContent_Errors(t *testing.T) {
 	p, _ := NewProvider("test-server", ts.URL, "", false)
 	
 	// Test unsupported URI
-	_, err := p.GetResourceContent("unsupported://uri")
+	_, err := p.GetResourceContent(context.Background(), "unsupported://uri")
 	if err == nil || !strings.Contains(err.Error(), "unsupported resource URI") {
 		t.Errorf("expected unsupported URI error, got %v", err)
 	}
 
 	// Test GraphQL error from server
-	_, err = p.GetResourceContent("unraid://test-server/containers")
+	_, err = p.GetResourceContent(context.Background(), "unraid://test-server/containers")
 	if err == nil || !strings.Contains(err.Error(), "GraphQL error: Some GraphQL Error") {
 		t.Errorf("expected GraphQL error, got %v", err)
 	}
@@ -145,7 +146,7 @@ func TestProvider_GetResourceContent_HTTPError(t *testing.T) {
 
 	p, _ := NewProvider("test-server", ts.URL, "", false)
 	
-	_, err := p.GetResourceContent("unraid://test-server/containers")
+	_, err := p.GetResourceContent(context.Background(), "unraid://test-server/containers")
 	if err == nil || !strings.Contains(err.Error(), "API error: status=500") {
 		t.Errorf("expected HTTP 500 error, got %v", err)
 	}
@@ -207,7 +208,7 @@ func TestProvider_GetResourceContent_ContainerLogs(t *testing.T) {
 	defer ts.Close()
 
 	p, _ := NewProvider("test-server", ts.URL, "", false)
-	content, err := p.GetResourceContent("unraid://test-server/containers/test-container/logs")
+	content, err := p.GetResourceContent(context.Background(), "unraid://test-server/containers/test-container/logs")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -263,7 +264,7 @@ func TestProvider_Tools(t *testing.T) {
 	}
 
 	// Test CallTool - System Stats
-	res, err := p.CallTool("get_unraid_system_stats_test-server", nil)
+	res, err := p.CallTool(context.Background(), "get_unraid_system_stats_test-server", nil)
 	if err != nil {
 		t.Fatalf("CallTool system stats failed: %v", err)
 	}
@@ -272,7 +273,7 @@ func TestProvider_Tools(t *testing.T) {
 	}
 
 	// Test CallTool - Array Status
-	res, err = p.CallTool("get_unraid_array_status_test-server", nil)
+	res, err = p.CallTool(context.Background(), "get_unraid_array_status_test-server", nil)
 	if err != nil {
 		t.Fatalf("CallTool array status failed: %v", err)
 	}
@@ -281,7 +282,7 @@ func TestProvider_Tools(t *testing.T) {
 	}
 
 	// Test CallTool - Containers
-	res, err = p.CallTool("get_unraid_containers_test-server", nil)
+	res, err = p.CallTool(context.Background(), "get_unraid_containers_test-server", nil)
 	if err != nil {
 		t.Fatalf("CallTool containers failed: %v", err)
 	}
@@ -290,7 +291,7 @@ func TestProvider_Tools(t *testing.T) {
 	}
 
 	// Test CallTool - UPS Status (Success)
-	res, err = p.CallTool("get_unraid_ups_status_test-server", nil)
+	res, err = p.CallTool(context.Background(), "get_unraid_ups_status_test-server", nil)
 	if err != nil {
 		t.Fatalf("CallTool ups status failed: %v", err)
 	}
@@ -304,7 +305,7 @@ func TestProvider_Tools(t *testing.T) {
 	// Test CallTool - UPS Status (Graceful Error Handled)
 	// We can use a different provider instance pointing to a server that triggers errors
 	pError, _ := NewProvider("fail_ups", ts.URL+"/fail_ups", "", false)
-	res, err = pError.CallTool("get_unraid_ups_status_fail_ups", nil)
+	res, err = pError.CallTool(context.Background(), "get_unraid_ups_status_fail_ups", nil)
 	if err != nil {
 		t.Fatalf("CallTool ups status error test failed: %v", err)
 	}

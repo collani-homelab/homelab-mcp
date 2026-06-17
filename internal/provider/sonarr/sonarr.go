@@ -76,7 +76,7 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 	}, nil
 }
 
-func (p *Provider) GetResourceContent(uri string) (string, error) {
+func (p *Provider) GetResourceContent(ctx context.Context, uri string) (string, error) {
 	var endpoint string
 	switch uri {
 	case "sonarr://queue":
@@ -84,7 +84,7 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 	case "sonarr://system/status":
 		endpoint = "/api/v3/system/status"
 	case "sonarr://series":
-		data, err := p.fetchFromSonarr("/api/v3/series")
+		data, err := p.fetchFromSonarr(ctx, "/api/v3/series")
 		if err != nil {
 			return "", err
 		}
@@ -97,11 +97,11 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}
 
-	return p.fetchFromSonarr(endpoint)
+	return p.fetchFromSonarr(ctx, endpoint)
 }
 
-func (p *Provider) fetchFromSonarr(apiPath string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func (p *Provider) fetchFromSonarr(ctx context.Context, apiPath string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	fullURL := fmt.Sprintf("%s%s", p.baseURL, apiPath)
@@ -153,7 +153,7 @@ func (p *Provider) GetPrompts() ([]mcp.Prompt, error) {
 	}, nil
 }
 
-func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
+func (p *Provider) GetPrompt(ctx context.Context, name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
 	if name == "check_series_downloads" {
 		return &mcp.GetPromptResult{
 			Messages: []*mcp.PromptMessage{
@@ -180,9 +180,9 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 	}, nil
 }
 
-func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+func (p *Provider) CallTool(ctx context.Context, name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
 	if name == "search_sonarr_series" {
-		data, err := p.fetchFromSonarr("/api/v3/series")
+		data, err := p.fetchFromSonarr(ctx, "/api/v3/series")
 		if err != nil {
 			return mcphelper.ErrorResult(fmt.Errorf("failed to fetch series: %w", err)), nil
 		}

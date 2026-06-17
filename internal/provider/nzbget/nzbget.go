@@ -81,7 +81,7 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 	}, nil
 }
 
-func (p *Provider) GetResourceContent(uri string) (string, error) {
+func (p *Provider) GetResourceContent(ctx context.Context, uri string) (string, error) {
 	var method string
 	switch uri {
 	case "nzbget://status":
@@ -89,7 +89,7 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 	case "nzbget://listgroups":
 		method = "listgroups"
 	case "nzbget://history":
-		data, err := p.fetchFromNZBGet("history")
+		data, err := p.fetchFromNZBGet(ctx, "history")
 		if err != nil {
 			return "", err
 		}
@@ -98,7 +98,7 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}
 
-	return p.fetchFromNZBGet(method)
+	return p.fetchFromNZBGet(ctx, method)
 }
 
 func truncateNZBGetHistory(data string, limit int) string {
@@ -119,8 +119,8 @@ func truncateNZBGetHistory(data string, limit int) string {
 	return string(out)
 }
 
-func (p *Provider) fetchFromNZBGet(method string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func (p *Provider) fetchFromNZBGet(ctx context.Context, method string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	payload := map[string]interface{}{
@@ -181,7 +181,7 @@ func (p *Provider) GetPrompts() ([]mcp.Prompt, error) {
 	}, nil
 }
 
-func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
+func (p *Provider) GetPrompt(ctx context.Context, name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
 	if name == "check_usenet_downloads" {
 		return &mcp.GetPromptResult{
 			Messages: []*mcp.PromptMessage{
@@ -201,6 +201,6 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 	return []mcp.Tool{}, nil
 }
 
-func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+func (p *Provider) CallTool(ctx context.Context, name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
 	return nil, fmt.Errorf("tool not found: %s", name)
 }

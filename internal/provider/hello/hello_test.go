@@ -1,6 +1,7 @@
 package hello
 
 import (
+	"context"
 	"testing"
 )
 
@@ -27,7 +28,7 @@ func TestHelloProvider_GetResources(t *testing.T) {
 
 func TestHelloProvider_GetResourceContent(t *testing.T) {
 	p := &HelloProvider{}
-	content, err := p.GetResourceContent("hello://world")
+	content, err := p.GetResourceContent(context.Background(), "hello://world")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -36,7 +37,7 @@ func TestHelloProvider_GetResourceContent(t *testing.T) {
 		t.Errorf("expected %q, got %q", expected, content)
 	}
 
-	_, err = p.GetResourceContent("unknown")
+	_, err = p.GetResourceContent(context.Background(), "unknown")
 	if err == nil {
 		t.Error("expected error for unknown URI, got nil")
 	}

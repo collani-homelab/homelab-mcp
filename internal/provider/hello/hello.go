@@ -1,6 +1,7 @@
 package hello
 
 import (
+	"context"
 	"fmt"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -22,7 +23,7 @@ func (h *HelloProvider) GetResources() ([]mcp.Resource, error) {
 	}, nil
 }
 
-func (h *HelloProvider) GetResourceContent(uri string) (string, error) {
+func (h *HelloProvider) GetResourceContent(_ context.Context, uri string) (string, error) {
 	if uri == "hello://world" {
 		return "Hello from the Homelab MCP Server!", nil
 	}
@@ -37,7 +38,7 @@ func (h *HelloProvider) GetPrompts() ([]mcp.Prompt, error) {
 	return []mcp.Prompt{}, nil
 }
 
-func (h *HelloProvider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
+func (h *HelloProvider) GetPrompt(_ context.Context, name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
 	return nil, fmt.Errorf("prompt not found: %s", name)
 }
 
@@ -45,6 +46,6 @@ func (h *HelloProvider) GetTools() ([]mcp.Tool, error) {
 	return []mcp.Tool{}, nil
 }
 
-func (h *HelloProvider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+func (h *HelloProvider) CallTool(_ context.Context, name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
 	return nil, fmt.Errorf("tool not found: %s", name)
 }

@@ -32,14 +32,14 @@ func NewProvider(webhookURL, ghToken string) *Provider {
 func (p *Provider) Name() string { return "Deploy" }
 
 func (p *Provider) GetResources() ([]mcp.Resource, error) { return []mcp.Resource{}, nil }
-func (p *Provider) GetResourceContent(uri string) (string, error) {
+func (p *Provider) GetResourceContent(ctx context.Context, uri string) (string, error) {
 	return "", fmt.Errorf("unsupported resource URI: %s", uri)
 }
 func (p *Provider) GetResourceTemplates() ([]mcp.ResourceTemplate, error) {
 	return []mcp.ResourceTemplate{}, nil
 }
 func (p *Provider) GetPrompts() ([]mcp.Prompt, error) { return []mcp.Prompt{}, nil }
-func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
+func (p *Provider) GetPrompt(ctx context.Context, name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
 	return nil, fmt.Errorf("prompt not found: %s", name)
 }
 
@@ -72,14 +72,14 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 	}, nil
 }
 
-func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+func (p *Provider) CallTool(ctx context.Context, name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
 	switch name {
 	case "redeploy_service":
 		serviceName, ok := arguments["service_name"].(string)
 		if !ok || serviceName == "" {
 			return mcphelper.ErrorResult(fmt.Errorf("service_name is required")), nil
 		}
-		return p.redeployService(serviceName), nil
+		return p.redeployService(ctx, serviceName), nil
 	case "get_deploy_status":
 		repo, ok := arguments["repo"].(string)
 		if !ok || repo == "" {
@@ -89,17 +89,17 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 		if w, ok := arguments["workflow"].(string); ok && w != "" {
 			workflow = w
 		}
-		return p.getDeployStatus(repo, workflow), nil
+		return p.getDeployStatus(ctx, repo, workflow), nil
 	}
 	return nil, fmt.Errorf("tool not found: %s", name)
 }
 
-func (p *Provider) redeployService(serviceName string) *mcp.CallToolResult {
+func (p *Provider) redeployService(ctx context.Context, serviceName string) *mcp.CallToolResult {
 	if p.webhookURL == "" {
 		return mcphelper.ErrorResult(fmt.Errorf("deploy webhook not configured: DEPLOY_WEBHOOK_URL is not set"))
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
 	url := fmt.Sprintf("%s/deploy/%s", p.webhookURL, url.PathEscape(serviceName))
@@ -131,8 +131,8 @@ type deployStatus struct {
 	CompletedAt string `json:"completed_at,omitempty"`
 }
 
-func (p *Provider) getDeployStatus(repo, workflow string) *mcp.CallToolResult {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func (p *Provider) getDeployStatus(ctx context.Context, repo, workflow string) *mcp.CallToolResult {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	url := fmt.Sprintf(

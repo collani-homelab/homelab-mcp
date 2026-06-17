@@ -46,7 +46,7 @@ func (s *Server) AddProvider(p provider.Provider) {
 		slog.Debug("Adding resource", "provider", p.Name(), "uri", r.URI)
 		s.mcpServer.AddResource(&r, func(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 			slog.Info("Reading resource", "uri", req.Params.URI)
-			content, err := p.GetResourceContent(req.Params.URI)
+			content, err := p.GetResourceContent(ctx, req.Params.URI)
 			if err != nil {
 				slog.Error("Failed to read resource", "uri", req.Params.URI, "error", err)
 				return nil, err
@@ -70,7 +70,7 @@ func (s *Server) AddProvider(p provider.Provider) {
 			slog.Debug("Adding resource template", "provider", p.Name(), "uriTemplate", t.URITemplate)
 			s.mcpServer.AddResourceTemplate(&t, func(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 				slog.Info("Reading resource from template", "uri", req.Params.URI)
-				content, err := p.GetResourceContent(req.Params.URI)
+				content, err := p.GetResourceContent(ctx, req.Params.URI)
 				if err != nil {
 					slog.Error("Failed to read resource template", "uri", req.Params.URI, "error", err)
 					return nil, err
@@ -95,7 +95,7 @@ func (s *Server) AddProvider(p provider.Provider) {
 			slog.Debug("Adding prompt", "provider", p.Name(), "name", pr.Name)
 			s.mcpServer.AddPrompt(&pr, func(ctx context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
 				slog.Info("Executing prompt", "name", req.Params.Name)
-				return p.GetPrompt(req.Params.Name, req.Params.Arguments)
+				return p.GetPrompt(ctx, req.Params.Name, req.Params.Arguments)
 			})
 		}
 	}
@@ -125,7 +125,7 @@ func (s *Server) AddProvider(p provider.Provider) {
 					return result, nil
 				}
 			}
-			return p.CallTool(req.Params.Name, args)
+			return p.CallTool(ctx, req.Params.Name, args)
 		})
 	}
 }
@@ -220,8 +220,18 @@ Summarize into three sections: 1) What's streaming right now, 2) What's download
 			mcpHandler.ServeHTTP(w, r)
 		})
 		
+		srv := &http.Server{Addr: ":" + port, Handler: handler}
+		go func() {
+			<-ctx.Done()
+			if err := srv.Shutdown(context.Background()); err != nil {
+				slog.Error("SSE server shutdown error", "err", err)
+			}
+		}()
 		slog.Info("Starting MCP server via Streamable HTTP (SSE compatible)", "port", port)
-		return http.ListenAndServe(":"+port, handler)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return err
+		}
+		return nil
 	}
 
 	slog.Info("Starting MCP server via stdio")

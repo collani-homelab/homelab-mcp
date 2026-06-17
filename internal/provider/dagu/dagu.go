@@ -46,9 +46,9 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 	}, nil
 }
 
-func (p *Provider) GetResourceContent(uri string) (string, error) {
+func (p *Provider) GetResourceContent(ctx context.Context, uri string) (string, error) {
 	if uri == "dagu://dags" {
-		return p.listDAGs()
+		return p.listDAGs(ctx)
 	}
 	return "", fmt.Errorf("resource not found: %s", uri)
 }
@@ -58,7 +58,7 @@ func (p *Provider) GetResourceTemplates() ([]mcp.ResourceTemplate, error) {
 }
 
 func (p *Provider) GetPrompts() ([]mcp.Prompt, error) { return []mcp.Prompt{}, nil }
-func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
+func (p *Provider) GetPrompt(ctx context.Context, name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
 	return nil, fmt.Errorf("prompt not found: %s", name)
 }
 
@@ -129,10 +129,10 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 	}, nil
 }
 
-func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+func (p *Provider) CallTool(ctx context.Context, name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
 	switch name {
 	case "list_dags":
-		result, err := p.listDAGs()
+		result, err := p.listDAGs(ctx)
 		if err != nil {
 			return mcphelper.ErrorResult(err), nil
 		}
@@ -143,7 +143,7 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 		if !ok || dagName == "" {
 			return mcphelper.ErrorResult(fmt.Errorf("name is required")), nil
 		}
-		result, err := p.getDAG(dagName)
+		result, err := p.getDAG(ctx, dagName)
 		if err != nil {
 			return mcphelper.ErrorResult(err), nil
 		}
@@ -155,7 +155,7 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 			return mcphelper.ErrorResult(fmt.Errorf("name is required")), nil
 		}
 		params, _ := arguments["params"].(string)
-		result, err := p.triggerDAG(dagName, params)
+		result, err := p.triggerDAG(ctx, dagName, params)
 		if err != nil {
 			return mcphelper.ErrorResult(err), nil
 		}
@@ -170,7 +170,7 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 		if !ok || dagRunID == "" {
 			return mcphelper.ErrorResult(fmt.Errorf("dag_run_id is required to stop a specific run")), nil
 		}
-		result, err := p.dagRunAction(dagName, dagRunID, "stop")
+		result, err := p.dagRunAction(ctx, dagName, dagRunID, "stop")
 		if err != nil {
 			return mcphelper.ErrorResult(err), nil
 		}
@@ -185,7 +185,7 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 		if !ok || dagRunID == "" {
 			return mcphelper.ErrorResult(fmt.Errorf("dag_run_id is required for retry")), nil
 		}
-		result, err := p.dagRunAction(dagName, dagRunID, "retry")
+		result, err := p.dagRunAction(ctx, dagName, dagRunID, "retry")
 		if err != nil {
 			return mcphelper.ErrorResult(err), nil
 		}
@@ -232,12 +232,12 @@ type dagSummary struct {
 	Suspended   bool   `json:"suspended,omitempty"`
 }
 
-func (p *Provider) listDAGs() (string, error) {
+func (p *Provider) listDAGs(ctx context.Context) (string, error) {
 	if p.baseURL == "" {
 		return "", fmt.Errorf("DAGU_API_URL is not configured")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	req, err := p.newRequest(ctx, http.MethodGet, "/api/v1/dags", nil)
@@ -297,12 +297,12 @@ func (p *Provider) listDAGs() (string, error) {
 	return string(out), nil
 }
 
-func (p *Provider) getDAG(name string) (string, error) {
+func (p *Provider) getDAG(ctx context.Context, name string) (string, error) {
 	if p.baseURL == "" {
 		return "", fmt.Errorf("DAGU_API_URL is not configured")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	req, err := p.newRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v1/dags/%s", url.PathEscape(name)), nil)
@@ -330,7 +330,7 @@ func (p *Provider) getDAG(name string) (string, error) {
 	return string(pruned), nil
 }
 
-func (p *Provider) triggerDAG(name, params string) (string, error) {
+func (p *Provider) triggerDAG(ctx context.Context, name, params string) (string, error) {
 	if p.baseURL == "" {
 		return "", fmt.Errorf("DAGU_API_URL is not configured")
 	}
@@ -344,7 +344,7 @@ func (p *Provider) triggerDAG(name, params string) (string, error) {
 		return "", err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	req, err := p.newRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/dags/%s/start", url.PathEscape(name)), bytes.NewReader(body))
@@ -363,12 +363,12 @@ func (p *Provider) triggerDAG(name, params string) (string, error) {
 	return fmt.Sprintf("DAG %q triggered successfully.", name), nil
 }
 
-func (p *Provider) dagRunAction(dagName, dagRunID, action string) (string, error) {
+func (p *Provider) dagRunAction(ctx context.Context, dagName, dagRunID, action string) (string, error) {
 	if p.baseURL == "" {
 		return "", fmt.Errorf("DAGU_API_URL is not configured")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	path := fmt.Sprintf("/api/v1/dag-runs/%s/%s/%s", url.PathEscape(dagName), url.PathEscape(dagRunID), action)

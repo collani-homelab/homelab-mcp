@@ -1,6 +1,7 @@
 package unifi
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -66,7 +67,7 @@ func TestProvider_GetResourceContent_SuccessAPIKey(t *testing.T) {
 	defer ts.Close()
 
 	p, _ := NewProvider(ts.URL, "mock-api-key", false)
-	content, err := p.GetResourceContent("unifi://clients")
+	content, err := p.GetResourceContent(context.Background(), "unifi://clients")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -95,7 +96,7 @@ func TestProvider_GetResourceContent_Fallback(t *testing.T) {
 	defer ts.Close()
 
 	p, _ := NewProvider(ts.URL, "mock-api-key", false)
-	content, err := p.GetResourceContent("unifi://clients")
+	content, err := p.GetResourceContent(context.Background(), "unifi://clients")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -117,7 +118,7 @@ func TestProvider_GetResourceContent_Devices(t *testing.T) {
 	defer ts.Close()
 
 	p, _ := NewProvider(ts.URL, "mock-api-key", false)
-	content, err := p.GetResourceContent("unifi://devices")
+	content, err := p.GetResourceContent(context.Background(), "unifi://devices")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

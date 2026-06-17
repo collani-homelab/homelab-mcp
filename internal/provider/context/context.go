@@ -41,7 +41,7 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 	return []mcp.Resource{}, nil
 }
 
-func (p *Provider) GetResourceContent(uri string) (string, error) {
+func (p *Provider) GetResourceContent(ctx context.Context, uri string) (string, error) {
 	return "", fmt.Errorf("resource not found: %s", uri)
 }
 
@@ -53,7 +53,7 @@ func (p *Provider) GetPrompts() ([]mcp.Prompt, error) {
 	return []mcp.Prompt{}, nil
 }
 
-func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
+func (p *Provider) GetPrompt(ctx context.Context, name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
 	return nil, fmt.Errorf("prompt not found: %s", name)
 }
 
@@ -94,7 +94,7 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 	}, nil
 }
 
-func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+func (p *Provider) CallTool(ctx context.Context, name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
 	switch name {
 	case "query_knowledge":
 		query, ok := arguments["query"].(string)
@@ -109,7 +109,7 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 		if f, ok := arguments["filter_type"].(string); ok {
 			filterType = f
 		}
-		return p.queryKnowledge(query, topK, filterType)
+		return p.queryKnowledge(ctx, query, topK, filterType)
 
 	case "index_document":
 		content, ok := arguments["content"].(string)
@@ -124,7 +124,7 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 		if !ok || docType == "" {
 			return mcphelper.ErrorResult(fmt.Errorf("missing or invalid type parameter")), nil
 		}
-		return p.indexDocument(content, source, docType)
+		return p.indexDocument(ctx, content, source, docType)
 	}
 	return nil, fmt.Errorf("tool not found: %s", name)
 }
@@ -145,7 +145,7 @@ type searchResult struct {
 	Metadata map[string]interface{} `json:"metadata"`
 }
 
-func (p *Provider) queryKnowledge(query string, topK int, filterType string) (*mcp.CallToolResult, error) {
+func (p *Provider) queryKnowledge(ctx context.Context, query string, topK int, filterType string) (*mcp.CallToolResult, error) {
 	reqBody := queryRequest{
 		Query: query,
 		TopK:  topK,
@@ -161,7 +161,7 @@ func (p *Provider) queryKnowledge(query string, topK int, filterType string) (*m
 		return mcphelper.ErrorResult(fmt.Errorf("failed to marshal query request: %w", err)), nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	url := fmt.Sprintf("%s/query", p.baseURL)
@@ -220,7 +220,7 @@ type indexResponse struct {
 	ChunksIndexed int    `json:"chunks_indexed"`
 }
 
-func (p *Provider) indexDocument(content, source, docType string) (*mcp.CallToolResult, error) {
+func (p *Provider) indexDocument(ctx context.Context, content, source, docType string) (*mcp.CallToolResult, error) {
 	reqBody := indexRequest{
 		Content: content,
 		Metadata: map[string]interface{}{
@@ -234,7 +234,7 @@ func (p *Provider) indexDocument(content, source, docType string) (*mcp.CallTool
 		return mcphelper.ErrorResult(fmt.Errorf("failed to marshal index request: %w", err)), nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	url := fmt.Sprintf("%s/index", p.baseURL)

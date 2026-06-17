@@ -46,7 +46,7 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 	return []mcp.Resource{}, nil
 }
 
-func (p *Provider) GetResourceContent(uri string) (string, error) {
+func (p *Provider) GetResourceContent(ctx context.Context, uri string) (string, error) {
 	return "", fmt.Errorf("resource not found: %s", uri)
 }
 
@@ -58,7 +58,7 @@ func (p *Provider) GetPrompts() ([]mcp.Prompt, error) {
 	return []mcp.Prompt{}, nil
 }
 
-func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
+func (p *Provider) GetPrompt(ctx context.Context, name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
 	return nil, fmt.Errorf("prompt not found: %s", name)
 }
 
@@ -99,14 +99,14 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 	}, nil
 }
 
-func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+func (p *Provider) CallTool(ctx context.Context, name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
 	switch name {
 	case "query_promql":
 		query, ok := arguments["query"].(string)
 		if !ok {
 			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: "query must be a string"}}}, nil
 		}
-		res, err := p.executePrometheusQuery(query)
+		res, err := p.executePrometheusQuery(ctx, query)
 		if err != nil {
 			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Prometheus query failed: %v", err)}}}, nil
 		}
@@ -121,7 +121,7 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 		if lb, ok := arguments["lookback"].(string); ok && lb != "" {
 			lookback = lb
 		}
-		res, err := p.executeLokiQuery(query, lookback)
+		res, err := p.executeLokiQuery(ctx, query, lookback)
 		if err != nil {
 			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Loki query failed: %v", err)}}}, nil
 		}
@@ -131,8 +131,8 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 	return nil, fmt.Errorf("tool not found: %s", name)
 }
 
-func (p *Provider) executePrometheusQuery(query string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func (p *Provider) executePrometheusQuery(ctx context.Context, query string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	u, err := url.Parse(fmt.Sprintf("%s/api/v1/query", p.prometheusURL))
@@ -177,8 +177,8 @@ func (p *Provider) executePrometheusQuery(query string) (string, error) {
 	return string(out), nil
 }
 
-func (p *Provider) executeLokiQuery(query, lookback string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func (p *Provider) executeLokiQuery(ctx context.Context, query, lookback string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	u, err := url.Parse(fmt.Sprintf("%s/loki/api/v1/query_range", p.lokiURL))

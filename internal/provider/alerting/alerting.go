@@ -32,7 +32,7 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 	return []mcp.Resource{}, nil
 }
 
-func (p *Provider) GetResourceContent(uri string) (string, error) {
+func (p *Provider) GetResourceContent(ctx context.Context, uri string) (string, error) {
 	return "", fmt.Errorf("resource not found: %s", uri)
 }
 
@@ -44,7 +44,7 @@ func (p *Provider) GetPrompts() ([]mcp.Prompt, error) {
 	return []mcp.Prompt{}, nil
 }
 
-func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
+func (p *Provider) GetPrompt(ctx context.Context, name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
 	return nil, fmt.Errorf("prompt not found: %s", name)
 }
 
@@ -67,14 +67,14 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 	}, nil
 }
 
-func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+func (p *Provider) CallTool(ctx context.Context, name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
 	if name == "send_notification" {
 		message, ok := arguments["message"].(string)
 		if !ok {
 			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: "message must be a string"}}}, nil
 		}
 
-		err := p.sendNtfyAlert(message)
+		err := p.sendNtfyAlert(ctx, message)
 		if err != nil {
 			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Failed to send notification: %v", err)}}}, nil
 		}
@@ -85,8 +85,8 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 	return nil, fmt.Errorf("tool not found: %s", name)
 }
 
-func (p *Provider) sendNtfyAlert(message string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func (p *Provider) sendNtfyAlert(ctx context.Context, message string) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	base := os.Getenv("NTFY_URL")

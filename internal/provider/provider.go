@@ -1,6 +1,8 @@
 package provider
 
 import (
+	"context"
+
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -12,14 +14,14 @@ type Provider interface {
 
 	// --- Resources (read-only state) ---
 	GetResources() ([]mcp.Resource, error)
-	GetResourceContent(uri string) (string, error)
+	GetResourceContent(ctx context.Context, uri string) (string, error)
 	GetResourceTemplates() ([]mcp.ResourceTemplate, error)
 
 	// --- Prompts ---
 	GetPrompts() ([]mcp.Prompt, error)
-	GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error)
+	GetPrompt(ctx context.Context, name string, arguments map[string]string) (*mcp.GetPromptResult, error)
 
 	// --- Tools (actions / mutations) ---
 	GetTools() ([]mcp.Tool, error)
-	CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error)
+	CallTool(ctx context.Context, name string, arguments map[string]interface{}) (*mcp.CallToolResult, error)
 }

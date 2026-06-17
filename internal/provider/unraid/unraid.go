@@ -113,13 +113,13 @@ type graphQLResponse struct {
 	} `json:"errors,omitempty"`
 }
 
-func (p *Provider) queryGraphQL(query string) ([]byte, error) {
-	reqBody, err := json.Marshal(graphQLRequest{Query: query})
+func (p *Provider) queryGraphQL(ctx context.Context, query string, variables map[string]interface{}) ([]byte, error) {
+	reqBody, err := json.Marshal(graphQLRequest{Query: query, Variables: variables})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal query: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "POST", p.baseURL, bytes.NewReader(reqBody))
@@ -159,7 +159,7 @@ func (p *Provider) queryGraphQL(query string) ([]byte, error) {
 	return gqlResp.Data, nil
 }
 
-func (p *Provider) GetResourceContent(uri string) (string, error) {
+func (p *Provider) GetResourceContent(ctx context.Context, uri string) (string, error) {
 	containersURI := fmt.Sprintf("unraid://%s/containers", p.name)
 	statsURI := fmt.Sprintf("unraid://%s/system/stats", p.name)
 	arrayURI := fmt.Sprintf("unraid://%s/array/status", p.name)
@@ -277,7 +277,7 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 					}
 				}
 			}`
-			dataBytes, err := p.queryGraphQL(listQuery)
+			dataBytes, err := p.queryGraphQL(ctx, listQuery, nil)
 			if err != nil {
 				return "", fmt.Errorf("failed to list containers: %w", err)
 			}
@@ -314,18 +314,18 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 			}
 
 			// Step 2: Query the container logs using the target ID
-			logsQuery := fmt.Sprintf(`query {
+			logsQuery := `query($id: String!) {
 				docker {
-					logs(id: "%s", tail: 100) {
+					logs(id: $id, tail: 100) {
 						lines {
 							timestamp
 							message
 						}
 					}
 				}
-			}`, targetID)
+			}`
 
-			logsDataBytes, err := p.queryGraphQL(logsQuery)
+			logsDataBytes, err := p.queryGraphQL(ctx, logsQuery, map[string]interface{}{"id": targetID})
 			if err != nil {
 				return "", fmt.Errorf("failed to fetch container logs: %w", err)
 			}
@@ -359,7 +359,7 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}
 
-	dataBytes, err := p.queryGraphQL(query)
+	dataBytes, err := p.queryGraphQL(ctx, query, nil)
 	if err != nil {
 		return "", err
 	}
@@ -380,7 +380,7 @@ func (p *Provider) GetPrompts() ([]mcp.Prompt, error) {
 	return []mcp.Prompt{}, nil
 }
 
-func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
+func (p *Provider) GetPrompt(ctx context.Context, name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
 	return nil, fmt.Errorf("prompt not found: %s", name)
 }
 
@@ -421,7 +421,7 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 	}, nil
 }
 
-func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+func (p *Provider) CallTool(ctx context.Context, name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
 	systemStatsToolName := fmt.Sprintf("get_unraid_system_stats_%s", p.name)
 	arrayStatusToolName := fmt.Sprintf("get_unraid_array_status_%s", p.name)
 	containersToolName := fmt.Sprintf("get_unraid_containers_%s", p.name)
@@ -455,7 +455,7 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
     }
   }
 }`
-		dataBytes, err := p.queryGraphQL(query)
+		dataBytes, err := p.queryGraphQL(ctx, query, nil)
 		if err != nil {
 			return &mcp.CallToolResult{
 				IsError: true,
@@ -496,7 +496,7 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
     }
   }
 }`
-		dataBytes, err := p.queryGraphQL(query)
+		dataBytes, err := p.queryGraphQL(ctx, query, nil)
 		if err != nil {
 			return &mcp.CallToolResult{
 				IsError: true,
@@ -530,7 +530,7 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
     }
   }
 }`
-		dataBytes, err := p.queryGraphQL(query)
+		dataBytes, err := p.queryGraphQL(ctx, query, nil)
 		if err != nil {
 			return &mcp.CallToolResult{
 				IsError: true,
@@ -566,7 +566,7 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
     }
   }
 }`
-		dataBytes, err := p.queryGraphQL(query)
+		dataBytes, err := p.queryGraphQL(ctx, query, nil)
 		if err != nil {
 			// Return a graceful JSON error message instead of protocol-level error
 			return &mcp.CallToolResult{

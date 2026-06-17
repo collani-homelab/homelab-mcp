@@ -54,9 +54,9 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 	}, nil
 }
 
-func (p *Provider) GetResourceContent(uri string) (string, error) {
+func (p *Provider) GetResourceContent(ctx context.Context, uri string) (string, error) {
 	if uri == "grafana://dashboards" {
-		return p.listDashboards("")
+		return p.listDashboards(ctx, "")
 	}
 	return "", fmt.Errorf("resource not found: %s", uri)
 }
@@ -66,7 +66,7 @@ func (p *Provider) GetResourceTemplates() ([]mcp.ResourceTemplate, error) {
 }
 
 func (p *Provider) GetPrompts() ([]mcp.Prompt, error) { return []mcp.Prompt{}, nil }
-func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
+func (p *Provider) GetPrompt(ctx context.Context, name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
 	return nil, fmt.Errorf("prompt not found: %s", name)
 }
 
@@ -101,11 +101,11 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 	}, nil
 }
 
-func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+func (p *Provider) CallTool(ctx context.Context, name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
 	switch name {
 	case "list_grafana_dashboards":
 		query, _ := arguments["query"].(string)
-		result, err := p.listDashboards(query)
+		result, err := p.listDashboards(ctx, query)
 		if err != nil {
 			return mcphelper.ErrorResult(err), nil
 		}
@@ -116,14 +116,14 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 		if !ok || uid == "" {
 			return mcphelper.ErrorResult(fmt.Errorf("uid is required")), nil
 		}
-		result, err := p.getDashboard(uid)
+		result, err := p.getDashboard(ctx, uid)
 		if err != nil {
 			return mcphelper.ErrorResult(err), nil
 		}
 		return mcphelper.TextResult(result), nil
 
 	case "get_grafana_alerts":
-		result, err := p.getFiringAlerts()
+		result, err := p.getFiringAlerts(ctx)
 		if err != nil {
 			return mcphelper.ErrorResult(err), nil
 		}
@@ -167,12 +167,12 @@ type dashboardSummary struct {
 	URL    string   `json:"url,omitempty"`
 }
 
-func (p *Provider) listDashboards(query string) (string, error) {
+func (p *Provider) listDashboards(ctx context.Context, query string) (string, error) {
 	if p.baseURL == "" {
 		return "", fmt.Errorf("GRAFANA_URL is not configured")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	path := "/api/search?type=dash-db&limit=100"
@@ -243,12 +243,12 @@ var panelNoiseKeys = []string{
 	"interval", "cacheTimeout", "pluginVersion", "datasource",
 }
 
-func (p *Provider) getDashboard(uid string) (string, error) {
+func (p *Provider) getDashboard(ctx context.Context, uid string) (string, error) {
 	if p.baseURL == "" {
 		return "", fmt.Errorf("GRAFANA_URL is not configured")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	req, err := p.newRequest(ctx, http.MethodGet, "/api/dashboards/uid/"+url.PathEscape(uid))
@@ -328,12 +328,12 @@ func (p *Provider) getDashboard(uid string) (string, error) {
 	return string(out), nil
 }
 
-func (p *Provider) getFiringAlerts() (string, error) {
+func (p *Provider) getFiringAlerts(ctx context.Context) (string, error) {
 	if p.baseURL == "" {
 		return "", fmt.Errorf("GRAFANA_URL is not configured")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	// Try unified alerting endpoint first.

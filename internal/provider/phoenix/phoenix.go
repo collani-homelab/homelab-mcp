@@ -47,16 +47,16 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 	}, nil
 }
 
-func (p *Provider) GetResourceContent(uri string) (string, error) {
+func (p *Provider) GetResourceContent(ctx context.Context, uri string) (string, error) {
 	switch {
 	case uri == "phoenix://projects":
-		return p.listProjects()
+		return p.listProjects(ctx)
 	case strings.HasPrefix(uri, "phoenix://traces/"):
 		project := strings.TrimPrefix(uri, "phoenix://traces/")
-		return p.listTraces(project, defaultLookback, 50)
+		return p.listTraces(ctx, project, defaultLookback, 50)
 	case strings.HasPrefix(uri, "phoenix://evaluations/"):
 		project := strings.TrimPrefix(uri, "phoenix://evaluations/")
-		return p.listSpanAnnotations(project, defaultLookback, 100)
+		return p.listSpanAnnotations(ctx, project, defaultLookback, 100)
 	}
 	return "", fmt.Errorf("resource not found: %s", uri)
 }
@@ -79,7 +79,7 @@ func (p *Provider) GetResourceTemplates() ([]mcp.ResourceTemplate, error) {
 }
 
 func (p *Provider) GetPrompts() ([]mcp.Prompt, error) { return []mcp.Prompt{}, nil }
-func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
+func (p *Provider) GetPrompt(ctx context.Context, name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
 	return nil, fmt.Errorf("prompt not found: %s", name)
 }
 
@@ -153,7 +153,7 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 	}, nil
 }
 
-func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+func (p *Provider) CallTool(ctx context.Context, name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
 	switch name {
 	case "query_phoenix_traces":
 		project, ok := arguments["project"].(string)
@@ -165,7 +165,7 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 		lookback := stringOrDefault(arguments["lookback"], defaultLookback)
 		limit := intOrDefault(arguments["limit"], 50)
 
-		result, err := p.querySpans(project, model, status, lookback, limit)
+		result, err := p.querySpans(ctx, project, model, status, lookback, limit)
 		if err != nil {
 			return mcphelper.ErrorResult(err), nil
 		}
@@ -179,7 +179,7 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 		lookback := stringOrDefault(arguments["lookback"], defaultLookback)
 		annotationName, _ := arguments["annotation_name"].(string)
 
-		result, err := p.getEvalScores(project, lookback, annotationName)
+		result, err := p.getEvalScores(ctx, project, lookback, annotationName)
 		if err != nil {
 			return mcphelper.ErrorResult(err), nil
 		}
@@ -193,7 +193,7 @@ func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp
 		lookback := stringOrDefault(arguments["lookback"], defaultLookback)
 		limit := intOrDefault(arguments["limit"], 50)
 
-		result, err := p.querySpans(project, "", "ERROR", lookback, limit)
+		result, err := p.querySpans(ctx, project, "", "ERROR", lookback, limit)
 		if err != nil {
 			return mcphelper.ErrorResult(err), nil
 		}
@@ -243,12 +243,12 @@ func (p *Provider) doRequest(req *http.Request) ([]byte, int, error) {
 	return body, resp.StatusCode, err
 }
 
-func (p *Provider) get(path string, query url.Values) ([]byte, error) {
+func (p *Provider) get(ctx context.Context, path string, query url.Values) ([]byte, error) {
 	if p.baseURL == "" {
 		return nil, fmt.Errorf("PHOENIX_URL is not configured")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	req, err := p.newRequest(ctx, path, query)
@@ -284,8 +284,8 @@ type projectsResponse struct {
 	Data []phoenixProject `json:"data"`
 }
 
-func (p *Provider) listProjects() (string, error) {
-	data, err := p.get("/v1/projects", url.Values{"limit": {"100"}})
+func (p *Provider) listProjects(ctx context.Context) (string, error) {
+	data, err := p.get(ctx, "/v1/projects", url.Values{"limit": {"100"}})
 	if err != nil {
 		return "", err
 	}
@@ -331,7 +331,7 @@ type spansResponse struct {
 // aggregation and error triage.
 var attributeNoiseKeys = []string{"input.value", "output.value", "llm.input_messages", "llm.output_messages"}
 
-func (p *Provider) fetchSpans(project, model, status, lookback string, limit int) ([]phoenixSpan, error) {
+func (p *Provider) fetchSpans(ctx context.Context, project, model, status, lookback string, limit int) ([]phoenixSpan, error) {
 	startTime, err := lookbackStartTime(lookback)
 	if err != nil {
 		return nil, err
@@ -349,7 +349,7 @@ func (p *Provider) fetchSpans(project, model, status, lookback string, limit int
 		query.Add("status_code", strings.ToUpper(status))
 	}
 
-	data, err := p.get("/v1/projects/"+url.PathEscape(project)+"/spans", query)
+	data, err := p.get(ctx, "/v1/projects/"+url.PathEscape(project)+"/spans", query)
 	if err != nil {
 		return nil, err
 	}
@@ -361,8 +361,8 @@ func (p *Provider) fetchSpans(project, model, status, lookback string, limit int
 	return raw.Data, nil
 }
 
-func (p *Provider) querySpans(project, model, status, lookback string, limit int) (string, error) {
-	spans, err := p.fetchSpans(project, model, status, lookback, limit)
+func (p *Provider) querySpans(ctx context.Context, project, model, status, lookback string, limit int) (string, error) {
+	spans, err := p.fetchSpans(ctx, project, model, status, lookback, limit)
 	if err != nil {
 		return "", err
 	}
@@ -428,7 +428,7 @@ type tracesResponse struct {
 	Data []traceData `json:"data"`
 }
 
-func (p *Provider) listTraces(project, lookback string, limit int) (string, error) {
+func (p *Provider) listTraces(ctx context.Context, project, lookback string, limit int) (string, error) {
 	startTime, err := lookbackStartTime(lookback)
 	if err != nil {
 		return "", err
@@ -442,7 +442,7 @@ func (p *Provider) listTraces(project, lookback string, limit int) (string, erro
 		"include_spans": {"true"},
 	}
 
-	data, err := p.get("/v1/projects/"+url.PathEscape(project)+"/traces", query)
+	data, err := p.get(ctx, "/v1/projects/"+url.PathEscape(project)+"/traces", query)
 	if err != nil {
 		return "", err
 	}
@@ -485,7 +485,7 @@ type spanAnnotationsResponse struct {
 // Phoenix's span_annotations endpoint requires at least one of span_ids or
 // identifier — it is not a free listing endpoint — so an empty spanIDs slice
 // short-circuits to an empty result instead of issuing a guaranteed-422 call.
-func (p *Provider) fetchSpanAnnotations(project string, spanIDs []string, annotationName string, limit int) ([]spanAnnotation, error) {
+func (p *Provider) fetchSpanAnnotations(ctx context.Context, project string, spanIDs []string, annotationName string, limit int) ([]spanAnnotation, error) {
 	if len(spanIDs) == 0 {
 		return nil, nil
 	}
@@ -498,7 +498,7 @@ func (p *Provider) fetchSpanAnnotations(project string, spanIDs []string, annota
 		query.Add("include_annotation_names", annotationName)
 	}
 
-	data, err := p.get("/v1/projects/"+url.PathEscape(project)+"/span_annotations", query)
+	data, err := p.get(ctx, "/v1/projects/"+url.PathEscape(project)+"/span_annotations", query)
 	if err != nil {
 		return nil, err
 	}
@@ -510,8 +510,8 @@ func (p *Provider) fetchSpanAnnotations(project string, spanIDs []string, annota
 	return raw.Data, nil
 }
 
-func (p *Provider) listSpanAnnotations(project, lookback string, limit int) (string, error) {
-	spans, err := p.fetchSpans(project, "", "", lookback, 500)
+func (p *Provider) listSpanAnnotations(ctx context.Context, project, lookback string, limit int) (string, error) {
+	spans, err := p.fetchSpans(ctx, project, "", "", lookback, 500)
 	if err != nil {
 		return "", err
 	}
@@ -520,7 +520,7 @@ func (p *Provider) listSpanAnnotations(project, lookback string, limit int) (str
 		spanIDs[i] = s.Context.SpanID
 	}
 
-	annotations, err := p.fetchSpanAnnotations(project, spanIDs, "", limit)
+	annotations, err := p.fetchSpanAnnotations(ctx, project, spanIDs, "", limit)
 	if err != nil {
 		return "", err
 	}
@@ -544,8 +544,8 @@ type scoreAggregate struct {
 	AverageScore   float64 `json:"average_score"`
 }
 
-func (p *Provider) getEvalScores(project, lookback, annotationName string) (string, error) {
-	spans, err := p.fetchSpans(project, "", "", lookback, 500)
+func (p *Provider) getEvalScores(ctx context.Context, project, lookback, annotationName string) (string, error) {
+	spans, err := p.fetchSpans(ctx, project, "", "", lookback, 500)
 	if err != nil {
 		return "", err
 	}
@@ -561,7 +561,7 @@ func (p *Provider) getEvalScores(project, lookback, annotationName string) (stri
 		spanIDs[i] = s.Context.SpanID
 	}
 
-	annotations, err := p.fetchSpanAnnotations(project, spanIDs, annotationName, 1000)
+	annotations, err := p.fetchSpanAnnotations(ctx, project, spanIDs, annotationName, 1000)
 	if err != nil {
 		return "", err
 	}

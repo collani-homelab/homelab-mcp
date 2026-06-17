@@ -68,7 +68,7 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 	}, nil
 }
 
-func (p *Provider) GetResourceContent(uri string) (string, error) {
+func (p *Provider) GetResourceContent(ctx context.Context, uri string) (string, error) {
 	var cmd string
 	switch uri {
 	case "tautulli://activity":
@@ -79,11 +79,11 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}
 
-	return p.fetchFromTautulli(cmd)
+	return p.fetchFromTautulli(ctx, cmd)
 }
 
-func (p *Provider) fetchFromTautulli(cmd string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func (p *Provider) fetchFromTautulli(ctx context.Context, cmd string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	endpoint := fmt.Sprintf("%s/api/v2?apikey=%s&cmd=%s", p.baseURL, p.apiKey, cmd)
@@ -134,7 +134,7 @@ func (p *Provider) GetPrompts() ([]mcp.Prompt, error) {
 	}, nil
 }
 
-func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
+func (p *Provider) GetPrompt(ctx context.Context, name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
 	if name == "analyze_plex_activity" {
 		return &mcp.GetPromptResult{
 			Messages: []*mcp.PromptMessage{
@@ -154,6 +154,6 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 	return []mcp.Tool{}, nil
 }
 
-func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+func (p *Provider) CallTool(ctx context.Context, name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
 	return nil, fmt.Errorf("tool not found: %s", name)
 }

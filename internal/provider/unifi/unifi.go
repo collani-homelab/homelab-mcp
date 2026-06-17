@@ -84,7 +84,7 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 	}, nil
 }
 
-func (p *Provider) GetResourceContent(uri string) (string, error) {
+func (p *Provider) GetResourceContent(ctx context.Context, uri string) (string, error) {
 	var apiPath string
 	switch uri {
 	case "unifi://clients":
@@ -96,7 +96,7 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 	case "unifi://network/alarms":
 		apiPath = "rest/alarm"
 	case "unifi://switches/poe":
-		raw, err := p.fetchFromUniFi("stat/device")
+		raw, err := p.fetchFromUniFi(ctx, "stat/device")
 		if err != nil {
 			return "", err
 		}
@@ -105,7 +105,7 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}
 
-	return p.fetchFromUniFi(apiPath)
+	return p.fetchFromUniFi(ctx, apiPath)
 }
 
 // filterPoEDevices extracts PoE-capable switches and their per-port power data
@@ -170,12 +170,12 @@ var defaultDevicePruneKeys = []string{
 	"_id", "site_id", "oui", "fingerprint", "_is_guest_by_uap", "tx_bytes-r", "rx_bytes-r",
 }
 
-func (p *Provider) fetchFromUniFi(apiPath string) (string, error) {
-	return p.fetchFromUniFiPruned(apiPath, defaultDevicePruneKeys)
+func (p *Provider) fetchFromUniFi(ctx context.Context, apiPath string) (string, error) {
+	return p.fetchFromUniFiPruned(ctx, apiPath, defaultDevicePruneKeys)
 }
 
-func (p *Provider) fetchFromUniFiPruned(apiPath string, pruneKeys []string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func (p *Provider) fetchFromUniFiPruned(ctx context.Context, apiPath string, pruneKeys []string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	var content string
@@ -248,7 +248,7 @@ func (p *Provider) GetPrompts() ([]mcp.Prompt, error) {
 	}, nil
 }
 
-func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
+func (p *Provider) GetPrompt(ctx context.Context, name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
 	if name == "troubleshoot_client" {
 		mac := arguments["mac"]
 		return &mcp.GetPromptResult{
@@ -286,17 +286,17 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 	}, nil
 }
 
-func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+func (p *Provider) CallTool(ctx context.Context, name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
 	switch name {
 	case "get_unifi_devices":
-		content, err := p.fetchFromUniFi("stat/device")
+		content, err := p.fetchFromUniFi(ctx, "stat/device")
 		if err != nil {
 			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Failed to fetch unifi devices: %v", err)}}}, nil
 		}
 		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: content}}}, nil
 
 	case "get_unifi_clients":
-		content, err := p.fetchFromUniFiPruned("stat/sta", []string{
+		content, err := p.fetchFromUniFiPruned(ctx, "stat/sta", []string{
 			// Internal IDs and tracking noise
 			"_id", "site_id", "user_id", "usergroup_id",
 			"network_id", "last_connection_network_id",

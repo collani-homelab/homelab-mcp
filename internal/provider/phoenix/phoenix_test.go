@@ -1,6 +1,7 @@
 package phoenix
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -45,7 +46,7 @@ func TestProvider_GetResourceContent_Projects(t *testing.T) {
 	defer ts.Close()
 
 	p := NewProvider(ts.URL)
-	content, err := p.GetResourceContent("phoenix://projects")
+	content, err := p.GetResourceContent(context.Background(), "phoenix://projects")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -56,7 +57,7 @@ func TestProvider_GetResourceContent_Projects(t *testing.T) {
 
 func TestProvider_GetResourceContent_NotFound(t *testing.T) {
 	p := NewProvider("http://phoenix")
-	_, err := p.GetResourceContent("phoenix://unknown")
+	_, err := p.GetResourceContent(context.Background(), "phoenix://unknown")
 	if err == nil {
 		t.Error("expected error for unknown resource")
 	}
@@ -75,7 +76,7 @@ func TestProvider_CallTool_QueryTraces(t *testing.T) {
 	defer ts.Close()
 
 	p := NewProvider(ts.URL)
-	result, err := p.CallTool("query_phoenix_traces", map[string]interface{}{
+	result, err := p.CallTool(context.Background(), "query_phoenix_traces", map[string]interface{}{
 		"project": "agents",
 		"model":   "gpt-4",
 	})
@@ -89,7 +90,7 @@ func TestProvider_CallTool_QueryTraces(t *testing.T) {
 
 func TestProvider_CallTool_MissingProject(t *testing.T) {
 	p := NewProvider("http://phoenix")
-	result, err := p.CallTool("query_phoenix_traces", map[string]interface{}{})
+	result, err := p.CallTool(context.Background(), "query_phoenix_traces", map[string]interface{}{})
 	if err != nil {
 		t.Fatalf("expected no transport error, got %v", err)
 	}
@@ -116,7 +117,7 @@ func TestProvider_CallTool_GetEvalScores(t *testing.T) {
 	defer ts.Close()
 
 	p := NewProvider(ts.URL)
-	result, err := p.CallTool("get_phoenix_eval_scores", map[string]interface{}{
+	result, err := p.CallTool(context.Background(), "get_phoenix_eval_scores", map[string]interface{}{
 		"project": "agents",
 	})
 	if err != nil {
@@ -144,7 +145,7 @@ func TestProvider_CallTool_GetEvalScores_NoSpans(t *testing.T) {
 	defer ts.Close()
 
 	p := NewProvider(ts.URL)
-	result, err := p.CallTool("get_phoenix_eval_scores", map[string]interface{}{
+	result, err := p.CallTool(context.Background(), "get_phoenix_eval_scores", map[string]interface{}{
 		"project": "agents",
 	})
 	if err != nil {
@@ -165,7 +166,7 @@ func TestProvider_CallTool_UpstreamError(t *testing.T) {
 	defer ts.Close()
 
 	p := NewProvider(ts.URL)
-	result, err := p.CallTool("get_phoenix_span_errors", map[string]interface{}{
+	result, err := p.CallTool(context.Background(), "get_phoenix_span_errors", map[string]interface{}{
 		"project": "agents",
 	})
 	if err != nil {

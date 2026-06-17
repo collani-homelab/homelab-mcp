@@ -81,7 +81,7 @@ func (p *Provider) GetResources() ([]mcp.Resource, error) {
 	}, nil
 }
 
-func (p *Provider) GetResourceContent(uri string) (string, error) {
+func (p *Provider) GetResourceContent(ctx context.Context, uri string) (string, error) {
 	var endpoint string
 	switch uri {
 	case "lidarr://queue":
@@ -91,7 +91,7 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 	case "lidarr://wanted":
 		endpoint = "/api/v1/wanted/missing?pageSize=25&sortKey=title&sortDirection=ascending"
 	case "lidarr://artist":
-		data, err := p.fetchFromLidarr("/api/v1/artist")
+		data, err := p.fetchFromLidarr(ctx, "/api/v1/artist")
 		if err != nil {
 			return "", err
 		}
@@ -104,11 +104,11 @@ func (p *Provider) GetResourceContent(uri string) (string, error) {
 		return "", fmt.Errorf("unsupported resource URI: %s", uri)
 	}
 
-	return p.fetchFromLidarr(endpoint)
+	return p.fetchFromLidarr(ctx, endpoint)
 }
 
-func (p *Provider) fetchFromLidarr(apiPath string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func (p *Provider) fetchFromLidarr(ctx context.Context, apiPath string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	fullURL := fmt.Sprintf("%s%s", p.baseURL, apiPath)
@@ -160,7 +160,7 @@ func (p *Provider) GetPrompts() ([]mcp.Prompt, error) {
 	}, nil
 }
 
-func (p *Provider) GetPrompt(name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
+func (p *Provider) GetPrompt(ctx context.Context, name string, arguments map[string]string) (*mcp.GetPromptResult, error) {
 	if name == "check_music_downloads" {
 		return &mcp.GetPromptResult{
 			Messages: []*mcp.PromptMessage{
@@ -187,9 +187,9 @@ func (p *Provider) GetTools() ([]mcp.Tool, error) {
 	}, nil
 }
 
-func (p *Provider) CallTool(name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+func (p *Provider) CallTool(ctx context.Context, name string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
 	if name == "search_lidarr_artists" {
-		data, err := p.fetchFromLidarr("/api/v1/artist")
+		data, err := p.fetchFromLidarr(ctx, "/api/v1/artist")
 		if err != nil {
 			return mcphelper.ErrorResult(fmt.Errorf("failed to fetch artists: %w", err)), nil
 		}
