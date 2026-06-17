@@ -573,10 +573,12 @@ func (p *Provider) CallTool(ctx context.Context, name string, arguments map[stri
 }`
 		dataBytes, err := p.queryGraphQL(ctx, query, nil)
 		if err != nil {
-			// Return a graceful JSON error message instead of protocol-level error
+			// Return a graceful JSON error instead of a protocol-level error so
+			// the LLM sees context rather than an opaque failure.
+			body, _ := json.Marshal(map[string]string{"error": fmt.Sprintf("UPS status unavailable: %v", err)})
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: fmt.Sprintf("{\"error\": \"UPS status unavailable: %v\"}", err)},
+					&mcp.TextContent{Text: string(body)},
 				},
 			}, nil
 		}

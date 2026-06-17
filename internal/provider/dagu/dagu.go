@@ -13,6 +13,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	mcphelper "homelab-mcp/internal/mcp"
+	"homelab-mcp/internal/provider"
 )
 
 type Provider struct {
@@ -323,7 +324,7 @@ func (p *Provider) getDAG(ctx context.Context, name string) (string, error) {
 
 	// Prune noisy fields before returning to keep token count down.
 	noiseKeys := []string{"log", "stdout", "stderr", "output"}
-	pruned, err := pruneJSON(data, noiseKeys)
+	pruned, err := provider.PruneJSON(data, noiseKeys)
 	if err != nil {
 		return string(data), nil
 	}
@@ -386,39 +387,4 @@ func (p *Provider) dagRunAction(ctx context.Context, dagName, dagRunID, action s
 	}
 
 	return fmt.Sprintf("DAG %q run %q: %s succeeded.", dagName, dagRunID, action), nil
-}
-
-// pruneJSON removes specified keys from a JSON byte slice to reduce token usage.
-func pruneJSON(data []byte, noiseKeys []string) ([]byte, error) {
-	var parsed interface{}
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, err
-	}
-	pruned := pruneValue(parsed, noiseKeys)
-	return json.MarshalIndent(pruned, "", "  ")
-}
-
-func pruneValue(v interface{}, noiseKeys []string) interface{} {
-	switch val := v.(type) {
-	case map[string]interface{}:
-		for k := range val {
-			isNoise := false
-			for _, nk := range noiseKeys {
-				if k == nk {
-					isNoise = true
-					break
-				}
-			}
-			if isNoise {
-				delete(val, k)
-			} else {
-				val[k] = pruneValue(val[k], noiseKeys)
-			}
-		}
-	case []interface{}:
-		for i, child := range val {
-			val[i] = pruneValue(child, noiseKeys)
-		}
-	}
-	return v
 }
