@@ -195,13 +195,22 @@ Summarize into three sections: 1) What's streaming right now, 2) What's download
 		
 		mcpHandler := mcp.NewSSEHandler(func(req *http.Request) *mcp.Server {
 			return s.mcpServer
-		}, &mcp.SSEOptions{
-			DisableLocalhostProtection: true,
-		})
-		
-		// CORS wrapper matching the working provisioner server
+		}, &mcp.SSEOptions{})
+
+		bearerToken := os.Getenv("MCP_BEARER_TOKEN")
+		corsOrigin := os.Getenv("CORS_ALLOW_ORIGIN")
+		if corsOrigin == "" {
+			corsOrigin = "http://localhost:3000"
+		}
+
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
+			if bearerToken != "" && r.Method != "OPTIONS" {
+				if r.Header.Get("Authorization") != "Bearer "+bearerToken {
+					http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					return
+				}
+			}
+			w.Header().Set("Access-Control-Allow-Origin", corsOrigin)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version")
 			if r.Method == "OPTIONS" {
