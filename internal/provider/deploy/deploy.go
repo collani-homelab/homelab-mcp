@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -101,7 +102,7 @@ func (p *Provider) redeployService(serviceName string) *mcp.CallToolResult {
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
-	url := fmt.Sprintf("%s/deploy/%s", p.webhookURL, serviceName)
+	url := fmt.Sprintf("%s/deploy/%s", p.webhookURL, url.PathEscape(serviceName))
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		return mcphelper.ErrorResult(fmt.Errorf("failed to create request: %w", err))

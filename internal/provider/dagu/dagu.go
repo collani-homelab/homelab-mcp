@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -304,7 +305,7 @@ func (p *Provider) getDAG(name string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	req, err := p.newRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v1/dags/%s", name), nil)
+	req, err := p.newRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v1/dags/%s", url.PathEscape(name)), nil)
 	if err != nil {
 		return "", err
 	}
@@ -346,7 +347,7 @@ func (p *Provider) triggerDAG(name, params string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	req, err := p.newRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/dags/%s/start", name), bytes.NewReader(body))
+	req, err := p.newRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/dags/%s/start", url.PathEscape(name)), bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
@@ -370,7 +371,7 @@ func (p *Provider) dagRunAction(dagName, dagRunID, action string) (string, error
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	path := fmt.Sprintf("/api/v1/dag-runs/%s/%s/%s", dagName, dagRunID, action)
+	path := fmt.Sprintf("/api/v1/dag-runs/%s/%s/%s", url.PathEscape(dagName), url.PathEscape(dagRunID), action)
 	req, err := p.newRequest(ctx, http.MethodPost, path, nil)
 	if err != nil {
 		return "", err

@@ -251,7 +251,7 @@ func (p *Provider) getDashboard(uid string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	req, err := p.newRequest(ctx, http.MethodGet, "/api/dashboards/uid/"+uid)
+	req, err := p.newRequest(ctx, http.MethodGet, "/api/dashboards/uid/"+url.PathEscape(uid))
 	if err != nil {
 		return "", err
 	}
