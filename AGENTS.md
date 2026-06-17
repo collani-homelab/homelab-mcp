@@ -38,11 +38,13 @@ This repository is the Model Context Protocol (MCP) server for the homelab. It e
 
 ## 4. Platform & Deployment (The Golden Path)
 
-- **`platform.json`:** Intended as service metadata for `homelab-platform`, but as of 2026-06-16 nothing in either repo actually reads it — grep turns up no consumer. Treat its `environment` list as aspirational/stale, not a source of truth (see `task.md`).
-- **CI/CD:** Push to `main` → GitHub Actions self-hosted runner on the SRE machine → `mise run docker-build` → `mise run docker-push` → `homelab-deploy -deploy homelab-mcp`. No manual steps needed — **when it's working.** As of 2026-06-16 the Deploy workflow queues forever (public repo + a runner group with `allows_public_repositories: false`, plus missing `REGISTRY_URL`/`PLATFORM_REPO_PATH` repo variables). See ROADMAP.md "Known Issues" before assuming a push deployed anything.
-- **Secrets:** Bound via `.env` on the host. Never committed. Must include `IMAGE_TAG` (registry-qualified, e.g. `192.168.99.178:5000/homelab-mcp:latest`) — without it the systemd-managed `docker compose up --pull always` falls back to the bare `homelab-mcp:latest` tag and fails to pull from Docker Hub.
+- **`platform.json`:** Service metadata intended for `homelab-platform`. Nothing currently reads it at runtime — treat its `environment` list as aspirational/stale documentation (see `task.md`).
+- **CI/CD:** Push to `main` → GitHub-hosted runner (`ubuntu-latest`) → builds Docker image → pushes to `ghcr.io/collani-homelab/homelab-mcp:latest` + `:<sha>`. This is working and automatic. The old self-hosted runner workflow is gone.
+- **Deploy cadence:** The `image-updater` Dagu DAG in `homelab-platform` runs nightly at 3am, pulls the latest image from ghcr.io, and calls `homelab-deploy -deploy homelab-mcp`. The SRE machine's running container is updated overnight. For an immediate restart without waiting, use the `redeploy_service` MCP tool (see Section 6).
+- **Secrets:** Bound via `.env` on the SRE machine at `~/repos/homelab-mcp/.env`. Never committed. `IMAGE_TAG` must be `ghcr.io/collani-homelab/homelab-mcp:latest` — without it, docker compose falls back to `homelab-mcp:latest` and tries Docker Hub.
+- **Docker auth:** The SRE machine's Docker daemon must be authenticated to ghcr.io with `read:packages` scope. Refresh with: `gh auth token | docker login ghcr.io -u wcollani --password-stdin`.
 - **Compose file:** `docker-compose.yml` in the repo root. The SRE machine's copy is updated automatically via `git pull` on service restart (defined in `sre-machine.json`).
-- **Agents must not do manual deploy flows** when CI/CD is actually working. Make changes, commit, push — the pipeline owns the deploy. Use `redeploy_service` only for force-restarts without a code change. While the Deploy workflow above is broken, manual deploy (`mise run docker-build && mise run docker-push` with `IMAGE_TAG` set, then `homelab-deploy -deploy homelab-mcp -repo <homelab-platform repo path>`) is the only path — confirm with the user before doing this, since it bypasses the intended pipeline.
+- **Agents must not do manual deploy flows** unless the user explicitly asks. Make changes, commit, push — CI builds the image. The nightly DAG deploys it. Use `redeploy_service` only for force-restarts without a code change.
 
 ## 5. Using the MCP Server from Claude Code
 

@@ -35,9 +35,10 @@ We use `mise` for environment and toolchain management.
   ```
 
 ### Docker Tasks (SSE Transport)
-- **Build Docker image:**
+- **Build Docker image locally (dev only):**
   ```bash
   mise run docker-build
+  # Production images are built by CI and pushed to ghcr.io/collani-homelab/homelab-mcp
   ```
 - **Run Docker container locally with SSE transport:**
   ```bash
